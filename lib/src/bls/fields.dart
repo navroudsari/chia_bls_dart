@@ -1,26 +1,17 @@
 import 'dart:typed_data';
+import 'package:quiver/core.dart';
+
+import 'extensions/uint8list_extension.dart';
 
 /// Finite Field
 abstract class Field implements FieldOperators {
   abstract BigInt Q;
   abstract int extension;
 
-  Field fromBytes(Uint8List bytes, BigInt Q);
   Field pow(BigInt exp);
   Field qiPow(int i);
   Field modSqrt();
   Field clone();
-
-  one(BigInt Q);
-  zero(BigInt Q);
-  fromFq(BigInt Q, Fq fq);
-
-  @override
-  bool operator ==(other);
-  @override
-  int get hashCode;
-  @override
-  String toString();
 }
 
 abstract class FieldOperators {
@@ -63,6 +54,24 @@ class Fq implements Field {
   factory Fq.one(BigInt Q) => Fq(Q, BigInt.one);
 
   factory Fq.from(BigInt Q, Fq fq) => fq;
+
+  static Fq fromBytes(Uint8List bytes, BigInt Q) {
+    assert(bytes.length == 48);
+    return Fq(Q, bytes.toBigInt());
+  }
+
+  @override
+  bool operator ==(other) {
+    if (other is! Fq) {
+      return false;
+    }
+    return value.compareTo(other.value) == 0 || Q.compareTo(other.Q) == 0;
+  }
+
+  @override
+  int get hashCode => hash2(Q, value);
+  @override
+  String toString();
 
   @override
   Fq operator *(other) {
@@ -161,40 +170,13 @@ class Fq implements Field {
   }
 
   @override
-  Fq fromBytes(Uint8List bytes, BigInt q) {
-    // TODO: implement fromBytes
-    throw UnimplementedError();
-  }
-
-  @override
   Fq pow(BigInt exp) {
     // TODO: implement pow
     throw UnimplementedError();
   }
 
   @override
-  Fq qiPow(int i) {
-    // TODO: implement qiPow
-    throw UnimplementedError();
-  }
-
-  @override
-  fromFq(BigInt Q, Fq fq) {
-    // TODO: implement fromFq
-    throw UnimplementedError();
-  }
-
-  @override
-  one(BigInt Q) {
-    // TODO: implement one
-    throw UnimplementedError();
-  }
-
-  @override
-  zero(BigInt Q) {
-    // TODO: implement zero
-    throw UnimplementedError();
-  }
+  Fq qiPow(int i) => this;
 
   @override
   Field modSqrt() {
