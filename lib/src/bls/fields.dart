@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:quiver/core.dart';
+import 'package:quiver/iterables.dart';
 
 import 'extensions/uint8list_extension.dart';
 
@@ -8,10 +9,13 @@ abstract class Field implements FieldOperators {
   abstract BigInt Q;
   abstract int extension;
 
+  Field _zero(BigInt Q);
+  Field _one(BigInt Q);
+  Field _from(Fq fq);
+
   Field pow(BigInt exp);
   Field qiPow(int i);
   Field modSqrt();
-  Field clone();
 }
 
 abstract class FieldOperators {
@@ -32,10 +36,65 @@ abstract class FieldExtBase implements Field {
   abstract Field root;
   abstract int embedding;
   abstract Field baseField;
+
   @override
-  abstract BigInt Q;
+  BigInt Q;
   @override
   abstract int extension;
+
+  final List<Field> fields;
+
+  FieldExtBase(this.Q, this.fields) {
+    if (fields.length != embedding) {
+      throw ArgumentError("Invalid number of arguments, expected $embedding");
+    }
+
+    fields.any((child) => child.extension != (extension ~/ embedding))
+        ? throw ArgumentError(
+            "Invalid child extension, expected ${extension ~/ embedding}")
+        : baseField = fields[0];
+  }
+
+  FieldExtBase create(BigInt Q, List<Field> fields);
+
+  @override
+  FieldExtBase operator +(other) {
+    dynamic otherNew;
+    if (other.runtimeType != runtimeType) {
+      if (other is! BigInt && other.extension > extension) {
+        throw UnimplementedError();
+      }
+      otherNew = fields.map((field) => baseField._zero(Q)).toList();
+      otherNew[0] = otherNew[0] + other;
+    } else {
+      otherNew = other;
+    }
+
+    var ret = create(
+        Q,
+        zip([fields, otherNew as List<Field>])
+            .map((field) => field[0] + field[1])
+            .toList());
+    ret.root = root;
+    return ret;
+  }
+
+  @override
+  FieldExtBase operator -(other) => this + (-other);
+  FieldExtBase operator *(other);
+  FieldExtBase operator ~/(other); //floordiv
+  FieldExtBase operator /(other);
+  FieldExtBase operator -() {
+    var ret = create(Q, fields.map((field) => -field).toList());
+    ret.root = root;
+    return ret;
+  }
+
+  FieldExtBase operator ~(); //invert
+  bool operator <(other);
+  bool operator >(other);
+  bool operator >=(other);
+  bool operator <=(other);
 }
 
 class Fq implements Field {
@@ -49,11 +108,11 @@ class Fq implements Field {
 
   Fq(this.Q, BigInt value) : value = value % Q;
 
-  factory Fq.zero(BigInt Q) => Fq(Q, BigInt.zero);
+  Fq _zero(BigInt Q) => Fq(Q, BigInt.zero);
 
-  factory Fq.one(BigInt Q) => Fq(Q, BigInt.one);
+  Fq _one(BigInt Q) => Fq(Q, BigInt.one);
 
-  factory Fq.from(BigInt Q, Fq fq) => fq;
+  Fq _from(Fq fq) => fq._clone();
 
   static Fq fromBytes(Uint8List bytes, BigInt Q) {
     assert(bytes.length == 48);
@@ -163,16 +222,20 @@ class Fq implements Field {
     return value >= other.value;
   }
 
-  @override
-  Fq clone() {
-    // TODO: implement clone
-    throw UnimplementedError();
-  }
+  Fq _clone() => Fq(Q, value);
 
   @override
   Fq pow(BigInt exp) {
-    // TODO: implement pow
-    throw UnimplementedError();
+    if (exp.compareTo(BigInt.zero) == 0) {
+      return Fq(Q, BigInt.one);
+    } else if (exp.compareTo(BigInt.one) == 0) {
+      return _clone();
+    }
+    if ((exp % BigInt.two).compareTo(BigInt.zero) == 0) {
+      return Fq(Q, value * value).pow(exp ~/ BigInt.two);
+    } else {
+      return Fq(Q, value * value).pow(exp ~/ BigInt.two) * this;
+    }
   }
 
   @override
