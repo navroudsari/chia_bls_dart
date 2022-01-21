@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:quiver/collection.dart';
 import 'package:quiver/core.dart';
 import 'package:quiver/iterables.dart';
 
@@ -16,6 +17,15 @@ abstract class Field implements FieldOperators {
   Field pow(BigInt exp);
   Field qiPow(int i);
   Field modSqrt();
+  bool toBool();
+
+  @override
+  bool operator ==(other);
+
+  @override
+  int get hashCode;
+  @override
+  String toString();
 }
 
 abstract class FieldOperators {
@@ -57,6 +67,23 @@ abstract class FieldExtBase implements Field {
 
   FieldExtBase create(BigInt Q, List<Field> fields);
 
+  FieldExtBase fromBytes(Uint8List buffer, BigInt Q) {
+    assert(buffer.length == extension * 48);
+    var embeddedSize = 48 * (extension ~/ embedding);
+    List<List<int>> tup = [];
+    for (int i = 0; i < embedding; i++) {
+      tup.add(buffer.sublist(i * embeddedSize, (i + 1) * embeddedSize));
+    }
+    return create(
+        Q,
+        tup.reversed
+            .map((buffer) => Fq.fromBytes(Uint8List.fromList(buffer), Q))
+            .toList());
+  }
+
+  @override
+  bool toBool() => fields.any((element) => false);
+
   @override
   FieldExtBase operator +(other) {
     dynamic otherNew;
@@ -81,20 +108,94 @@ abstract class FieldExtBase implements Field {
 
   @override
   FieldExtBase operator -(other) => this + (-other);
-  FieldExtBase operator *(other);
-  FieldExtBase operator ~/(other); //floordiv
-  FieldExtBase operator /(other);
+
+  @override
+  FieldExtBase operator *(other) {
+    if (other is BigInt) {
+      var ret = create(Q, fields.map((field) => field * other).toList());
+      ret.Q = Q;
+      ret.root = root;
+      return ret;
+    }
+    if (extension < other.extension) {
+      throw UnimplementedError();
+    }
+
+    var buf = fields.map((field) => baseField._zero(Q)).toList();
+
+    if (other is FieldExtBase) {
+      fields.asMap().forEach((i, x) {
+        if (extension == other.extension) {
+          other.fields.asMap().forEach((j, y) {
+            if (x.toBool() && y.toBool()) {
+              if (i + j >= embedding) {
+                buf[(i + j) % embedding] += x * y * root;
+              } else {
+                buf[(i + j) % embedding] += x * y;
+              }
+            }
+          });
+        } else {
+          if (x.toBool()) {
+            buf[i] = x * other;
+          }
+        }
+      });
+    }
+    var ret = create(Q, buf);
+    ret.root = root;
+    return ret;
+  }
+
+  @override
+  FieldExtBase operator ~/(other) => this * ~other;
+
+  @override
+  FieldExtBase operator /(other) => this ~/ other;
+
+  @override
   FieldExtBase operator -() {
     var ret = create(Q, fields.map((field) => -field).toList());
     ret.root = root;
     return ret;
   }
 
-  FieldExtBase operator ~(); //invert
-  bool operator <(other);
-  bool operator >(other);
-  bool operator >=(other);
-  bool operator <=(other);
+  @override
+  bool operator <(other) =>
+      zip([fields.reversed as List<Field>, other.reversed as List<Field>])
+          .any((f) => f[0] < f[1]);
+
+  @override
+  bool operator >(other) =>
+      zip([fields, other as List<Field>]).any((f) => f[0] > f[1]);
+
+  @override
+  bool operator ==(other) {
+    if (other.runtimeType != runtimeType) {
+      if (other is FieldExtBase || other is BigInt) {
+        if (other is! FieldExtBase || extension > other.extension) {
+          for (int i = 1; i < embedding; i++) {
+            if (fields[i] != root._zero(Q)) {
+              return false;
+            }
+          }
+          return fields[0] == other;
+        }
+        throw UnimplementedError();
+      }
+      throw UnimplementedError();
+    } else if (other is FieldExtBase) {
+      return listsEqual(fields, other.fields) && Q == other.Q;
+    } else {
+      throw UnimplementedError();
+    }
+  }
+
+  @override
+  int get hashCode => hash4(Q, extension, embedding, fields);
+
+  @override
+  String toString() => "Fq$extension(${fields.join(', ')}) )";
 }
 
 class Fq implements Field {
@@ -118,6 +219,9 @@ class Fq implements Field {
     assert(bytes.length == 48);
     return Fq(Q, bytes.toBigInt());
   }
+
+  @override
+  bool toBool() => true;
 
   @override
   bool operator ==(other) {
