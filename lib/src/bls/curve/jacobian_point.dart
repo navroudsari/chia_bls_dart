@@ -13,8 +13,9 @@ class JacobianPoint {
   final Field z;
   final EC ec;
 
-  JacobianPoint(this.x, this.y, this.z, this.infinity, this.isExtension, EC? ec)
-      : ec = ec ?? defaultEc {
+  JacobianPoint(this.x, this.y, this.z, this.infinity, EC? ec)
+      : ec = ec ?? defaultEc,
+        isExtension = x is! Fq {
     if ((x is! Fq) && (x is! FieldExtBase) ||
         ((y is! Fq) && (y is! FieldExtBase)) ||
         ((z is! Fq) && (z is! FieldExtBase))) {
