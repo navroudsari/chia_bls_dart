@@ -1,3 +1,5 @@
+import 'package:chia_bls_dart/src/bls/curve/affine_point.dart';
+
 import '../fields.dart';
 import 'ec.dart';
 
@@ -19,7 +21,16 @@ class JacobianPoint {
     if ((x is! Fq) && (x is! FieldExtBase) ||
         ((y is! Fq) && (y is! FieldExtBase)) ||
         ((z is! Fq) && (z is! FieldExtBase))) {
-      throw ArgumentError("x,y should be field elements");
+      throw ArgumentError("x,y,z should be field elements");
     }
+  }
+
+  AffinePoint toAffine() {
+    if (infinity) {
+      return AffinePoint(Fq.zero(ec.q), Fq.zero(ec.q), infinity, ec);
+    }
+    var newX = x / (z.pow(BigInt.two));
+    var newY = y / (z.pow(BigInt.from(3)));
+    return AffinePoint(newX, newY, infinity, ec);
   }
 }
