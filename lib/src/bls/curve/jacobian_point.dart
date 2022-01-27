@@ -33,4 +33,14 @@ class JacobianPoint {
     var newY = y / (z.pow(BigInt.from(3)));
     return AffinePoint(newX, newY, infinity, ec);
   }
+
+  JacobianPoint operator +(JacobianPoint other) {
+    if (other.infinity) {
+      return this;
+    } else if (infinity) {
+      return other;
+    }
+
+    return addPointsJacobian(this, other, isExtension, ec);
+  }
 }

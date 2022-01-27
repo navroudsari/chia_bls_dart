@@ -69,73 +69,82 @@ AffinePoint addPoints(AffinePoint p1, AffinePoint p2, {EC? ec}) {
   return AffinePoint(newX, newY, false, ec);
 }
 
-// JacobianPoint double_point_jacobian(p1: JacobianPoint, ec=default_ec, FE=Fq) -> JacobianPoint:
+JacobianPoint doublePointJacobian(JacobianPoint p1, bool isExtension, EC? ec) {
+  /// Jacobian elliptic curve point doubling, see
+  /// http://www.hyperelliptic.org/EFD/oldefd/jacobian.html
 
-//     /// Jacobian elliptic curve point doubling, see
-//     /// http://www.hyperelliptic.org/EFD/oldefd/jacobian.html
+  ec ??= defaultEc;
 
-//     X, Y, Z = p1.x, p1.y, p1.z
-//     if Y == FE.zero(ec.q) or p1.infinity:
-//         return JacobianPoint(FE.one(ec.q), FE.one(ec.q), FE.zero(ec.q), True, ec)
+  var X = p1.x, Y = p1.y, Z = p1.z;
+  if (Y == (isExtension ? Fq2.zero(ec.q) : Fq.zero(ec.q)) || p1.infinity) {
+    return isExtension
+        ? JacobianPoint(Fq2.one(ec.q), Fq2.one(ec.q), Fq2.zero(ec.q), false, ec)
+        : JacobianPoint(Fq.one(ec.q), Fq.one(ec.q), Fq.zero(ec.q), false, ec);
+  }
 
-//     # S = 4*X*Y^2
-//     S = Fq(ec.q, 4) * X * Y * Y
+  // # S = 4*X*Y^2
+  var S = Fq(ec.q, BigInt.from(4)) * X * Y * Y;
 
-//     Z_sq = Z * Z
-//     Z_4th = Z_sq * Z_sq
-//     Y_sq = Y * Y
-//     Y_4th = Y_sq * Y_sq
+  var Z_sq = Z * Z;
+  var Z_4th = Z_sq * Z_sq;
+  var Y_sq = Y * Y;
+  var Y_4th = Y_sq * Y_sq;
 
-//     # M = 3*X^2 + a*Z^4
-//     M = Fq(ec.q, 3) * X * X
-//     M += ec.a * Z_4th
+  // # M = 3*X^2 + a*Z^4
+  var M = Fq(ec.q, BigInt.from(3)) * X * X;
+  M += ec.a * Z_4th;
 
-//     # X' = M^2 - 2*S
-//     X_p = M * M - Fq(ec.q, 2) * S
-//     # Y' = M*(S - X') - 8*Y^4
-//     Y_p = M * (S - X_p) - Fq(ec.q, 8) * Y_4th
-//     # Z' = 2*Y*Z
-//     Z_p = Fq(ec.q, 2) * Y * Z
-//     return JacobianPoint(X_p, Y_p, Z_p, False, ec)
+  // # X' = M^2 - 2*S
+  var X_p = M * M - Fq(ec.q, BigInt.two) * S;
+  // # Y' = M*(S - X') - 8*Y^4
+  var Y_p = M * (S - X_p) - Fq(ec.q, BigInt.from(8)) * Y_4th;
+  // # Z' = 2*Y*Z
+  var Z_p = Fq(ec.q, BigInt.two) * Y * Z;
+  return JacobianPoint(X_p, Y_p, Z_p, false, ec);
+}
 
-// def add_points_jacobian(
-//     p1: JacobianPoint, p2: JacobianPoint, ec=default_ec, FE=Fq
-// ) -> JacobianPoint:
-//     """
-//     Jacobian elliptic curve point addition, see
-//     http://www.hyperelliptic.org/EFD/oldefd/jacobian.html
-//     """
-//     if p1.infinity:
-//         return p2
-//     if p2.infinity:
-//         return p1
-//     # U1 = X1*Z2^2
-//     U1 = p1.x * (p2.z ** 2)
-//     # U2 = X2*Z1^2
-//     U2 = p2.x * (p1.z ** 2)
-//     # S1 = Y1*Z2^3
-//     S1 = p1.y * (p2.z ** 3)
-//     # S2 = Y2*Z1^3
-//     S2 = p2.y * (p1.z ** 3)
-//     if U1 == U2:
-//         if S1 != S2:
-//             return JacobianPoint(FE.one(ec.q), FE.one(ec.q), FE.zero(ec.q), True, ec)
-//         else:
-//             return double_point_jacobian(p1, ec, FE)
+JacobianPoint addPointsJacobian(
+    JacobianPoint p1, JacobianPoint p2, bool isExtension, EC? ec) {
+  // Jacobian elliptic curve point addition, see
+  // http://www.hyperelliptic.org/EFD/oldefd/jacobian.html
 
-//     # H = U2 - U1
-//     H = U2 - U1
-//     # R = S2 - S1
-//     R = S2 - S1
-//     H_sq = H * H
-//     H_cu = H * H_sq
-//     # X3 = R^2 - H^3 - 2*U1*H^2
-//     X3 = R * R - H_cu - Fq(ec.q, 2) * U1 * H_sq
-//     # Y3 = R*(U1*H^2 - X3) - S1*H^3
-//     Y3 = R * (U1 * H_sq - X3) - S1 * H_cu
-//     # Z3 = H*Z1*Z2
-//     Z3 = H * p1.z * p2.z
-//     return JacobianPoint(X3, Y3, Z3, False, ec)
+  ec ??= defaultEc;
+
+  if (p1.infinity) return p2;
+  if (p2.infinity) return p1;
+  // # U1 = X1*Z2^2
+  var U1 = p1.x * (p2.z.pow(BigInt.two));
+  // # U2 = X2*Z1^2
+  var U2 = p2.x * (p1.z.pow(BigInt.two));
+  // # S1 = Y1*Z2^3
+  var S1 = p1.y * (p2.z.pow(BigInt.from(3)));
+  // # S2 = Y2*Z1^3
+  var S2 = p2.y * (p1.z.pow(BigInt.from(3)));
+  if (U1 == U2) {
+    if (S1 != S2) {
+      return isExtension
+          ? JacobianPoint(
+              Fq2.one(ec.q), Fq2.one(ec.q), Fq2.zero(ec.q), true, ec)
+          : JacobianPoint(Fq.one(ec.q), Fq.one(ec.q), Fq.zero(ec.q), true, ec);
+    } else {
+      return doublePointJacobian(p1, isExtension, ec);
+    }
+  }
+
+  // # H = U2 - U1
+  var H = U2 - U1;
+  // # R = S2 - S1
+  var R = S2 - S1;
+  var H_sq = H * H;
+  var H_cu = H * H_sq;
+  // # X3 = R^2 - H^3 - 2*U1*H^2
+  var X3 = R * R - H_cu - Fq(ec.q, BigInt.two) * U1 * H_sq;
+  // # Y3 = R*(U1*H^2 - X3) - S1*H^3
+  var Y3 = R * (U1 * H_sq - X3) - S1 * H_cu;
+  // # Z3 = H*Z1*Z2
+  var Z3 = H * p1.z * p2.z;
+  return JacobianPoint(X3, Y3, Z3, false, ec);
+}
 
 // def scalar_mult(c, p1: AffinePoint, ec=default_ec, FE=Fq) -> AffinePoint:
 //     """
