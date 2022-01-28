@@ -5,6 +5,9 @@ import '../fields.dart';
 import 'ec.dart';
 
 class AffinePoint {
+  // Elliptic curve point, can represent any curve, and use Fq or Fq2
+  //   coordinates.
+
   final bool isExtension;
   final Field x;
   final Field y;
@@ -22,10 +25,9 @@ class AffinePoint {
   }
 
   bool isOnCurve() {
+    // Check that y^2 = x^3 + ax + b.
     if (infinity) return true;
-
     var left = y * y, right = x * x * x + ec.a * x + ec.b;
-
     return left == right;
   }
 
@@ -35,22 +37,11 @@ class AffinePoint {
 
   AffinePoint operator +(AffinePoint other) {
     if (other is! AffinePoint) throw ArgumentError('Incorrect object');
-
-    assert(isOnCurve());
-    assert(other.isOnCurve());
-
-    if (infinity) return other;
-    if (other.infinity) return this;
-    if (this == other) doublePoint(this);
-
-    var x1 = x, y1 = y;
-    var x2 = other.x, y2 = other.y;
-
-    var s = (y2 - y1) / (x2 - x1);
-    var newX = s * s - x1 - x2;
-    var newY = s * (x1 - newX) - y1;
-    return AffinePoint(newX, newY, false, ec);
+    return addPoints(this, other);
   }
+
+  AffinePoint operator -() => AffinePoint(x, -y, infinity, ec);
+  AffinePoint operator -(AffinePoint other) => this + -other;
 
   AffinePoint operator *(other) {
     if (other is! BigInt && other is! Fq) {
