@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import '../fields.dart';
 import '../bls12381.dart';
+import '../fields.dart';
 import 'affine_point.dart';
 import 'jacobian_point.dart';
 
@@ -190,4 +193,64 @@ JacobianPoint scalarMultJacobian(c, JacobianPoint p1, EC? ec) {
     c = c >> 1;
   }
   return result;
+}
+
+bool signFq(Fq element, EC? ec) {
+  ec ??= defaultEc;
+  return element > Fq(ec.q, ((ec.q - BigInt.one) ~/ BigInt.two));
+}
+
+bool signFq2(Fq2 element, EC? ec) {
+  ec ??= defaultEcTwist;
+  if (element.fields[1] == Fq(ec.q, BigInt.zero)) {
+    return signFq(element.fields[0] as Fq, ec);
+  }
+
+  return element.fields[1] > Fq(ec.q, ((ec.q - BigInt.one) ~/ BigInt.two));
+}
+
+JacobianPoint G1Generator({EC? ec}) {
+  ec ??= defaultEc;
+  return AffinePoint(ec.gx, ec.gy, false, ec).toJacobian();
+}
+
+JacobianPoint G2Generator({EC? ec}) {
+  ec ??= defaultEc;
+  return AffinePoint(ec.g2x, ec.g2y, false, ec).toJacobian();
+}
+
+JacobianPoint G1Infinity({EC? ec}) {
+  ec ??= defaultEc;
+  return JacobianPoint(Fq.one(ec.q), Fq.one(ec.q), Fq.one(ec.q), true, ec);
+}
+
+JacobianPoint G2Infinity({EC? ec}) {
+  ec ??= defaultEc;
+  return JacobianPoint(Fq2.one(ec.q), Fq2.one(ec.q), Fq2.one(ec.q), true, ec);
+}
+
+Uint8List pointToBytes(JacobianPoint pointJ, bool isExtension, EC? ec) {
+  ec ??= defaultEc;
+  var point = pointJ.toAffine();
+  var output = point.x.toBytes();
+
+  // # If the y coordinate is the bigger one of the two, set the first
+  // # bit to 1.
+  if (point.infinity) {
+    return (Uint8List.fromList([0x40] + List.filled(output.length - 1, 0)));
+  }
+
+  var sign;
+  if (isExtension) {
+    sign = signFq2(point.y as Fq2, ec);
+  } else {
+    sign = signFq(point.y as Fq, ec);
+  }
+
+  if (sign) {
+    output[0] |= 0xA0;
+  } else {
+    output[0] |= 0x80;
+  }
+  return output;
 }

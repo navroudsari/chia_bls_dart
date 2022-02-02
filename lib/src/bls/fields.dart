@@ -1,9 +1,9 @@
 import 'dart:typed_data';
+import 'package:chia_bls_dart/src/bls/extensions/byte_conversion.dart';
 import 'package:quiver/collection.dart';
 import 'package:quiver/core.dart';
 import 'package:quiver/iterables.dart';
 
-import 'extensions/uint8list_extension.dart';
 import 'bls12381.dart';
 
 /// Finite Field
@@ -19,6 +19,7 @@ abstract class Field implements FieldOperators {
   Field pow(BigInt exp);
   Field qiPow(int i);
   bool toBool();
+  Uint8List toBytes();
 
   @override
   bool operator ==(other);
@@ -107,6 +108,16 @@ abstract class FieldExtBase implements Field {
         tup.reversed
             .map((buffer) => Fq.fromBytes(Uint8List.fromList(buffer), Q))
             .toList());
+  }
+
+  @override
+  Uint8List toBytes() {
+    var bytes = Uint8List(0);
+    for (var field in fields.reversed) {
+      bytes.addAll(field.toBytes());
+    }
+
+    return Uint8List.fromList(bytes);
   }
 
   @override
@@ -490,6 +501,9 @@ class Fq implements Field {
       R = (R * b) % Q;
     }
   }
+
+  @override
+  Uint8List toBytes() => value.toBytes();
 }
 
 class Fq2 extends FieldExtBase {

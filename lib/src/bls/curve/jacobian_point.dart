@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:chia_bls_dart/src/bls/curve/affine_point.dart';
+import 'package:chia_bls_dart/src/bls/extensions/byte_conversion.dart';
+import 'package:crypto/crypto.dart';
+import 'package:quiver/core.dart';
 
 import '../fields.dart';
 import 'ec.dart';
@@ -25,6 +30,11 @@ class JacobianPoint {
     }
   }
 
+  bool isOnCurve() {
+    if (infinity) return true;
+    return toAffine().isOnCurve();
+  }
+
   AffinePoint toAffine() {
     if (infinity) {
       return AffinePoint(Fq.zero(ec.q), Fq.zero(ec.q), infinity, ec);
@@ -34,13 +44,45 @@ class JacobianPoint {
     return AffinePoint(newX, newY, infinity, ec);
   }
 
-  JacobianPoint operator +(JacobianPoint other) {
-    if (other.infinity) {
-      return this;
-    } else if (infinity) {
-      return other;
-    }
+  void checkValid() {
+    assert(isOnCurve());
+    assert(this * ec.n == G2Infinity());
+  }
 
+  BigInt getFingerprint() {
+    Uint8List dig =
+        Uint8List.fromList(sha256.convert(toBytes()).bytes.sublist(0, 4));
+    return dig.toBigInt();
+  }
+
+  JacobianPoint operator +(JacobianPoint other) {
     return addPointsJacobian(this, other, isExtension, ec);
   }
+
+  @override
+  bool operator ==(other) {
+    if (other is! JacobianPoint) {
+      return false;
+    }
+    return toAffine() == other.toAffine();
+  }
+
+  JacobianPoint operator *(c) {
+    if ((c is! BigInt) && (c is! Fq)) {
+      throw ArgumentError("Error, must be Bigint or Fq");
+    }
+    return scalarMultJacobian(c, this, ec);
+  }
+
+  JacobianPoint operator -() => (-toAffine()).toJacobian();
+  JacobianPoint operator -(JacobianPoint other) => throw UnimplementedError();
+
+  Uint8List toBytes() => pointToBytes(this, isExtension, ec);
+
+  @override
+  int get hashCode => hash4(x, y, z, infinity);
+
+  @override
+  String toString() =>
+      'AffinePoint(x=${x.toString()}, y=${y.toString()}, z=${z.toString()}, i=${infinity.toString()})';
 }
