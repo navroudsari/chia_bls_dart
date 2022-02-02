@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import '../fields.dart';
 import '../bls12381.dart';
-import '../fields.dart';
 import 'affine_point.dart';
 import 'jacobian_point.dart';
 
@@ -29,7 +28,7 @@ class EC {
       this.h, this.x, this.k, this.sqrtN3, this.sqrtN3m1o2);
 }
 
-yForX(Field x, {EC? ec}) {
+yForX(Field x, EC? ec) {
   //Solves y = sqrt(x^3 + ax + b) for both valid ys.
   ec ??= defaultEc;
   var u = x * x * x + ec.a * x + ec.b;
@@ -229,6 +228,16 @@ JacobianPoint G2Infinity({EC? ec}) {
   return JacobianPoint(Fq2.one(ec.q), Fq2.one(ec.q), Fq2.one(ec.q), true, ec);
 }
 
+JacobianPoint G1FromBytes(Uint8List bytes, EC? ec) {
+  ec ??= defaultEc;
+  return bytesToPoint(bytes, false, ec);
+}
+
+JacobianPoint G2FromBytes(Uint8List bytes, EC? ec) {
+  ec ??= defaultEc;
+  return bytesToPoint(bytes, true, ec);
+}
+
 Uint8List pointToBytes(JacobianPoint pointJ, bool isExtension, EC? ec) {
   ec ??= defaultEc;
   var point = pointJ.toAffine();
@@ -240,7 +249,7 @@ Uint8List pointToBytes(JacobianPoint pointJ, bool isExtension, EC? ec) {
     return (Uint8List.fromList([0x40] + List.filled(output.length - 1, 0)));
   }
 
-  var sign;
+  bool sign;
   if (isExtension) {
     sign = signFq2(point.y as Fq2, ec);
   } else {
@@ -253,4 +262,55 @@ Uint8List pointToBytes(JacobianPoint pointJ, bool isExtension, EC? ec) {
     output[0] |= 0x80;
   }
   return output;
+}
+
+JacobianPoint bytesToPoint(Uint8List buffer, bool isExtension, EC? ec) {
+  //  Zcash serialization described in https://datatracker.ietf.org/doc/draft-irtf-cfrg-pairing-friendly-curves/
+
+  ec ??= defaultEc;
+
+  if (!isExtension) {
+    if (buffer.length != 48) {
+      throw AssertionError("G1Elements must be 48 bytes");
+    }
+  } else {
+    if (buffer.length != 96) {
+      throw AssertionError("G2Elements must be 96 bytes");
+    }
+  }
+
+  var mByte = buffer[0] & 0xE0;
+
+  if ([0x20, 0x60, 0xE0].contains(mByte)) {
+    throw AssertionError("Invalid first three bits");
+  }
+
+  var CBit = mByte & 0x80; // First bit
+  var IBit = mByte & 0x40; // Second bit
+  var SBit = mByte & 0x20; // Third bit
+
+  if (CBit == 0) {
+    throw AssertionError("First bit must be 1 (only compressed points)");
+  }
+
+  buffer = Uint8List.fromList(([buffer[0] & 0x1F]) + buffer.sublist(1));
+
+  if (IBit == 1) {
+    if (buffer.any((e) => e != 0)) {
+      throw AssertionError("Point at infinity set, but data not all zeroes");
+    }
+
+    return isExtension
+        ? AffinePoint(Fq.zero(ec.q), Fq.zero(ec.q), true, ec).toJacobian()
+        : AffinePoint(Fq2.zero(ec.q), Fq2.zero(ec.q), true, ec).toJacobian();
+  }
+
+  var x =
+      isExtension ? Fq.fromBytes(buffer, ec.q) : Fq2.fromBytes(buffer, ec.q);
+  var yValue = yForX(x, ec);
+  var signFn = isExtension == false ? signFq : signFq2;
+
+  var y = signFn(yValue, ec) == (SBit != 0) ? yValue : -yValue;
+
+  return AffinePoint(x, y, false, ec).toJacobian();
 }

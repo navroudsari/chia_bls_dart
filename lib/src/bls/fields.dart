@@ -11,9 +11,10 @@ abstract class Field implements FieldOperators {
   abstract BigInt Q;
   abstract int extension;
 
+  Field _from(BigInt Q, Fq fq);
+  Field _fromBytes(Uint8List bytes, BigInt Q);
   Field _zero(BigInt Q);
   Field _one(BigInt Q);
-  Field _from(BigInt Q, Fq fq);
   Field _clone();
 
   Field pow(BigInt exp);
@@ -23,7 +24,6 @@ abstract class Field implements FieldOperators {
 
   @override
   bool operator ==(other);
-
   @override
   int get hashCode;
   @override
@@ -94,14 +94,13 @@ abstract class FieldExtBase implements Field {
     return ret;
   }
 
-  FieldExtBase create(BigInt Q, List<Field> fields);
-
-  FieldExtBase fromBytes(Uint8List buffer, BigInt Q) {
-    assert(buffer.length == extension * 48);
+  @override
+  FieldExtBase _fromBytes(Uint8List bytes, BigInt Q) {
+    assert(bytes.length == extension * 48);
     var embeddedSize = 48 * (extension ~/ embedding);
     List<List<int>> tup = [];
     for (int i = 0; i < embedding; i++) {
-      tup.add(buffer.sublist(i * embeddedSize, (i + 1) * embeddedSize));
+      tup.add(bytes.sublist(i * embeddedSize, (i + 1) * embeddedSize));
     }
     return create(
         Q,
@@ -109,6 +108,8 @@ abstract class FieldExtBase implements Field {
             .map((buffer) => Fq.fromBytes(Uint8List.fromList(buffer), Q))
             .toList());
   }
+
+  FieldExtBase create(BigInt Q, List<Field> fields);
 
   @override
   Uint8List toBytes() {
@@ -293,21 +294,27 @@ class Fq implements Field {
   BigInt value;
 
   Fq(this.Q, BigInt value) : value = value % Q;
+  Fq._()
+      : Q = BigInt.zero,
+        value = BigInt.zero;
 
   factory Fq.from(BigInt Q, Fq fq) => fq;
-  factory Fq.zero(BigInt Q) => Fq(Q, BigInt.zero);
-  factory Fq.one(BigInt Q) => Fq(Q, BigInt.one);
+  factory Fq.fromBytes(Uint8List bytes, BigInt Q) =>
+      Fq._()._fromBytes(bytes, Q);
+  factory Fq.zero(BigInt Q) => Fq._()._zero(Q);
+  factory Fq.one(BigInt Q) => Fq._()._one(Q);
 
   @override
-  Fq _zero(BigInt Q) => Fq.zero(Q);
+  Fq _zero(BigInt Q) => Fq(Q, BigInt.zero);
 
   @override
-  Fq _one(BigInt Q) => Fq.one(Q);
+  Fq _one(BigInt Q) => Fq(Q, BigInt.one);
 
   @override
   Fq _from(BigInt Q, Fq fq) => fq;
 
-  static Fq fromBytes(Uint8List bytes, BigInt Q) {
+  @override
+  Fq _fromBytes(Uint8List bytes, BigInt Q) {
     assert(bytes.length == 48);
     return Fq(Q, bytes.toBigInt());
   }
@@ -518,8 +525,17 @@ class Fq2 extends FieldExtBase {
       : root = Fq(Q, BigInt.from(-1)),
         super(Q, fields);
 
-  factory Fq2.zero(BigInt Q) => Fq2(Q, [Fq.zero(Q), Fq.zero(Q)]);
-  factory Fq2.one(BigInt Q) => Fq2(Q, [Fq.one(Q), Fq.one(Q)]);
+  Fq2._()
+      : root = Fq._(),
+        super(BigInt.zero, [Fq._(), Fq._()]);
+
+  factory Fq2.zero(BigInt Q) => Fq2._()._from(Q, Fq.zero(Q)) as Fq2;
+  factory Fq2.one(BigInt Q) => Fq2._()._from(Q, Fq.one(Q)) as Fq2;
+  factory Fq2.fromBytes(Uint8List bytes, BigInt Q) =>
+      Fq2._()._fromBytes(bytes, Q) as Fq2;
+
+  @override
+  Fq2 create(BigInt Q, List<Field> fields) => Fq2(Q, fields);
 
   @override
   bool operator <=(other) {
@@ -530,12 +546,6 @@ class Fq2 extends FieldExtBase {
   bool operator >=(other) {
     throw UnimplementedError();
   }
-
-  @override
-  Fq2 create(BigInt Q, List<Field> fields) => Fq2(Q, fields);
-
-  @override
-  Fq2 _zero(BigInt Q) => Fq2(Q, [Fq.zero(Q), Fq.zero(Q)]);
 
   @override
   Fq2 operator ~() {
@@ -583,14 +593,23 @@ class Fq6 extends FieldExtBase {
       : root = Fq2(Q, [Fq.one(Q), Fq.one(Q)]),
         super(Q, fields);
 
+  Fq6._()
+      : root = Fq2._(),
+        super(BigInt.zero, [Fq2._(), Fq2._(), Fq2._()]);
+
+  factory Fq6.zero(BigInt Q) => Fq6._()._from(Q, Fq.zero(Q)) as Fq6;
+  factory Fq6.one(BigInt Q) => Fq6._()._from(Q, Fq.one(Q)) as Fq6;
+  factory Fq6.fromBytes(Uint8List bytes, BigInt Q) =>
+      Fq6._()._fromBytes(bytes, Q) as Fq6;
+
+  @override
+  FieldExtBase create(BigInt Q, List<Field> fields) => Fq6(Q, fields);
+
   @override
   bool operator <=(other) => throw UnimplementedError();
 
   @override
   bool operator >=(other) => throw UnimplementedError();
-
-  @override
-  FieldExtBase create(BigInt Q, List<Field> fields) => Fq6(Q, fields);
 
   @override
   Fq6 operator ~() {
@@ -621,14 +640,23 @@ class Fq12 extends FieldExtBase {
       : root = Fq6(Q, [Fq2.zero(Q), Fq2.one(Q), Fq2.zero(Q)]),
         super(Q, fields);
 
+  Fq12._()
+      : root = Fq6._(),
+        super(BigInt.zero, [Fq6._(), Fq6._()]);
+
+  factory Fq12.zero(BigInt Q) => Fq12._()._from(Q, Fq.zero(Q)) as Fq12;
+  factory Fq12.one(BigInt Q) => Fq12._()._from(Q, Fq.one(Q)) as Fq12;
+  factory Fq12.fromBytes(Uint8List bytes, BigInt Q) =>
+      Fq12._()._fromBytes(bytes, Q) as Fq12;
+
+  @override
+  FieldExtBase create(BigInt Q, List<Field> fields) => Fq12(Q, fields);
+
   @override
   bool operator <=(other) => throw UnimplementedError();
 
   @override
   bool operator >=(other) => throw UnimplementedError();
-
-  @override
-  FieldExtBase create(BigInt Q, List<Field> fields) => Fq12(Q, fields);
 
   @override
   Field operator ~() {
