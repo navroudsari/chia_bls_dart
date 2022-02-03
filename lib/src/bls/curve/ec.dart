@@ -1,4 +1,7 @@
+import 'dart:math' as Math;
 import 'dart:typed_data';
+
+import 'package:quiver/iterables.dart';
 
 import '../fields.dart';
 import '../bls12381.dart';
@@ -313,4 +316,91 @@ JacobianPoint bytesToPoint(Uint8List buffer, bool isExtension, EC? ec) {
   var y = signFn(yValue, ec) == (SBit != 0) ? yValue : -yValue;
 
   return AffinePoint(x, y, false, ec).toJacobian();
+}
+
+AffinePoint untwist(AffinePoint point, EC? ec) {
+  // Given a point on G2 on the twisted curve, this converts its
+  // coordinates back from Fq2 to Fq12. See Craig Costello book, look
+  // up twists.
+
+  ec ??= defaultEc;
+  var f = Fq12.one(ec.q);
+  var wsq = Fq12(ec.q, [f.root, Fq6.zero(ec.q)]);
+  var wcu = Fq12(ec.q, [Fq6.zero(ec.q), f.root]);
+  var newX = point.x * wsq;
+  var newY = point.y * wcu;
+  return AffinePoint(newX, newY, false, ec);
+}
+
+AffinePoint twist(AffinePoint point, EC? ec) {
+  // Given an untwisted point, this converts it's
+  // coordinates to a point on the twisted curve. See Craig Costello
+  // book, look up twists.
+
+  ec ??= defaultEcTwist;
+  var f = Fq12.one(ec.q);
+  var wsq = Fq12(ec.q, [f.root, Fq6.zero(ec.q)]);
+  var wcu = Fq12(ec.q, [Fq6.zero(ec.q), f.root]);
+  var newX = point.x * wsq;
+  var newY = point.y * wcu;
+  return AffinePoint(newX, newY, false, ec);
+}
+
+//  Isogeny map evaluation specified by map_coeffs
+
+//  map_coeffs should be specified as (xnum, xden, ynum, yden)
+
+//  This function evaluates the isogeny over Jacobian projective coordinates.
+//  For details, see Section 4.3 of
+//     Wahby and Boneh, "Fast and simple constant-time hashing to the BLS12-381 elliptic curve."
+//     ePrint # 2019/403, https://ia.cr/2019/403.
+JacobianPoint evalIso(JacobianPoint P, List<List<Fq2>> mapCoeffs, EC ec) {
+  var x = P.x, y = P.y, z = P.z;
+  List<Fq2?> mapVals = List.filled(4, null);
+
+  // Precompute the required powers of Z^2
+  int maxord = mapCoeffs.fold(
+      0, (int prevValue, List<Fq2> item) => Math.max(prevValue, item.length));
+
+  List<Fq2?> zPows = List.filled(maxord, null);
+  zPows[0] = z.pow(BigInt.zero) as Fq2; //# type: ignore
+  zPows[1] = z.pow(BigInt.two) as Fq2; //# type: ignore
+  for (var idx in range(2, zPows.length)) {
+    assert(zPows[idx.toInt() - 1] != null);
+    assert(zPows[1] != null);
+    zPows[idx.toInt()] = (zPows[idx.toInt() - 1] as Fq2) * zPows[1] as Fq2;
+  }
+
+  // Compute the numerator and denominator of the X and Y maps via Horner's rule
+
+  for (var i in enumerate(mapCoeffs)) {
+    var coeffsZ =
+        zip([i.value.reversed.toList(), zPows.sublist(0, i.value.length)])
+            .map((zPowC) {
+      return (zPowC[0] as Fq2) * (zPowC[1] as Fq2);
+    }).toList() as List<Fq2>;
+
+    var tmp = coeffsZ[0];
+    for (var coeff in coeffsZ.sublist(1, coeffsZ.length)) {
+      tmp = tmp * x as Fq2;
+      tmp = tmp + coeff as Fq2;
+    }
+    mapVals[i.index] = tmp;
+  }
+
+  // xden is of order 1 less than xnum, so one needs to multiply it by an extra factor of Z^2
+  assert(mapCoeffs[1].length + 1 == mapCoeffs[0].length);
+  assert(zPows[1] != null);
+  assert(mapVals[1] != null);
+  mapVals[1] = mapVals[1]! * zPows[1] as Fq2;
+  // Multiply the result of Y map by the y-coordinate y / z^3
+  assert(mapVals[2] != null);
+  assert(mapVals[3] != null);
+  mapVals[2] = mapVals[2]! * y as Fq2;
+  mapVals[3] = mapVals[3]! * (z.pow(BigInt.from(3))) as Fq2;
+
+  var Z = mapVals[1]! * mapVals[3];
+  var X = mapVals[0]! * mapVals[3] * Z;
+  var Y = mapVals[2]! * mapVals[1] * Z * Z;
+  return JacobianPoint(X, Y, Z, P.infinity, ec);
 }
