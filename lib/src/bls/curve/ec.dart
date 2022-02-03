@@ -1,4 +1,4 @@
-import 'dart:math' as Math;
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:quiver/iterables.dart';
@@ -360,7 +360,7 @@ JacobianPoint evalIso(JacobianPoint P, List<List<Fq2>> mapCoeffs, EC ec) {
 
   // Precompute the required powers of Z^2
   int maxord = mapCoeffs.fold(
-      0, (int prevValue, List<Fq2> item) => Math.max(prevValue, item.length));
+      0, (int prevValue, List<Fq2> item) => math.max(prevValue, item.length));
 
   List<Fq2?> zPows = List.filled(maxord, null);
   zPows[0] = z.pow(BigInt.zero) as Fq2; //# type: ignore
