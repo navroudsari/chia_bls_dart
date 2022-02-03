@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 final _byteMask = BigInt.from(0xff);
@@ -29,5 +30,11 @@ extension BigIntConversion on BigInt {
     }
 
     return endian == Endian.big ? r : Uint8List.fromList(r.reversed.toList());
+  }
+}
+
+extension StringToBytes on String {
+  Uint8List utf8ToBytes() {
+    return const Utf8Encoder().convert(this);
   }
 }
