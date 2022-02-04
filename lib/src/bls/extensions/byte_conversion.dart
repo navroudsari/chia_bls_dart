@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 final _byteMask = BigInt.from(0xff);
 
-extension ByteConversion on Uint8List {
+extension Uint8ListByteConversion on Uint8List {
   BigInt toBigInt() {
     BigInt r = BigInt.zero;
 
@@ -15,7 +15,7 @@ extension ByteConversion on Uint8List {
   }
 }
 
-extension BigIntConversion on BigInt {
+extension BigIntByteConversion on BigInt {
   Uint8List toBytes({Endian endian = Endian.big}) {
     if (this < BigInt.zero) {
       throw AssertionError("Cannot convert signed BigInt");
@@ -33,7 +33,11 @@ extension BigIntConversion on BigInt {
   }
 }
 
-extension StringToBytes on String {
+extension IntByteConversion on int {
+  Uint8List asUint32Bytes() => Uint8List(4)..buffer.asUint32List()[0] = this;
+}
+
+extension StringByteConversion on String {
   Uint8List utf8ToBytes() {
     return const Utf8Encoder().convert(this);
   }

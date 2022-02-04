@@ -2,17 +2,13 @@ import 'dart:typed_data';
 
 import 'package:chia_bls_dart/src/bls/curve/ec.dart';
 import 'package:chia_bls_dart/src/bls/curve/jacobian_point.dart';
-import 'package:chia_bls_dart/src/bls/hash_to_field.dart';
+import 'package:chia_bls_dart/src/bls/hd_keys.dart';
 import 'extensions/byte_conversion.dart';
 
-import 'hkdf.dart';
-
 class PrivateKey {
-  final BigInt _value;
+  final BigInt value;
 
-  PrivateKey(BigInt value)
-      : assert(value < defaultEc.n),
-        _value = value;
+  PrivateKey(this.value) : assert(value < defaultEc.n);
 
   int get size => 32;
 
@@ -21,11 +17,7 @@ class PrivateKey {
   }
 
   static PrivateKey fromSeed(Uint8List seed) {
-    int L = 48;
-    seed.add(0);
-    var okm = HKDF256.extractExpand(L, seed,
-        'BLS-SIG-KEYGEN-SALT-'.utf8ToBytes(), Uint8List.fromList([0, L]));
-    return PrivateKey(os2ip(okm) % defaultEc.n);
+    return HdKeys.keyGen(seed);
   }
 
   static PrivateKey fromInt(BigInt n) {
@@ -37,15 +29,15 @@ class PrivateKey {
       PrivateKey(privateKeys.fold(
               BigInt.zero,
               (BigInt previousValue, PrivateKey element) =>
-                  previousValue + element._value) %
+                  previousValue + element.value) %
           defaultEc.n);
 
   Uint8List toBytes() {
-    return _value.toBytes();
+    return value.toBytes();
   }
 
   JacobianPoint getG1() {
-    return G1Generator() * _value;
+    return G1Generator() * value;
   }
 
   @override
@@ -53,12 +45,12 @@ class PrivateKey {
     if (other is! PrivateKey) {
       return false;
     }
-    return _value == other._value;
+    return value == other.value;
   }
 
   @override
-  int get hashCode => _value.toInt();
+  int get hashCode => value.toInt();
 
   @override
-  String toString() => 'PrivateKey($_value)';
+  String toString() => 'PrivateKey($value)';
 }
