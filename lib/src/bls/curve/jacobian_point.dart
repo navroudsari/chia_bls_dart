@@ -45,8 +45,9 @@ class JacobianPoint {
   }
 
   void checkValid() {
-    assert(isOnCurve());
-    assert(this * ec.n == G2Infinity());
+    if (!(isOnCurve() && (this * ec.n == G2Infinity()))) {
+      throw AssertionError("Point is not valid");
+    }
   }
 
   BigInt getFingerprint() {
