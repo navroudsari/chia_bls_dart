@@ -132,7 +132,7 @@ abstract class FieldExtBase implements Field {
   }
 
   @override
-  Field pow(BigInt exp) {
+  FieldExtBase pow(BigInt exp) {
     assert(exp >= BigInt.zero);
     var ans = _one(Q);
     var base = this;
@@ -150,7 +150,7 @@ abstract class FieldExtBase implements Field {
   }
 
   @override
-  Field qiPow(int i) {
+  FieldExtBase qiPow(int i) {
     if (Q != q) throw UnimplementedError();
     i %= extension;
     if (i == 0) return this;
