@@ -90,3 +90,23 @@ abstract class CoreMPL {
     }
   }
 }
+
+class BasicSchemeMPL extends CoreMPL {
+  BasicSchemeMPL() : super(basicSchemeMPLCSID);
+
+  @override
+  bool aggregateVerify(
+    List<JacobianPoint> pubKeys,
+    List<Uint8List> messages,
+    JacobianPoint signature,
+  ) {
+    if ((pubKeys.length != messages.length) || pubKeys.isEmpty) {
+      return false;
+    }
+    if (Set.from(messages).length != messages.length) {
+      // Disallow repeated messages
+      return false;
+    }
+    return super.aggregateVerify(pubKeys, messages, signature);
+  }
+}
