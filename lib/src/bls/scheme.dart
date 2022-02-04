@@ -110,3 +110,44 @@ class BasicSchemeMPL extends CoreMPL {
     return super.aggregateVerify(pubKeys, messages, signature);
   }
 }
+
+class AugSchemeMPL extends CoreMPL {
+  AugSchemeMPL() : super(augSchemeMPLCSID);
+
+  @override
+  JacobianPoint sign(PrivateKey secKey, Uint8List message) {
+    return _signPrependPk(secKey, message, secKey.getG1());
+  }
+
+  JacobianPoint _signPrependPk(
+      PrivateKey secKey, Uint8List message, JacobianPoint prependPk) {
+    var augMessage = prependPk.toBytes();
+    augMessage.addAll(message);
+    return super.sign(secKey, augMessage);
+  }
+
+  @override
+  bool verify(
+      JacobianPoint pubKey, Uint8List message, JacobianPoint signature) {
+    var augMessage = pubKey.toBytes();
+    augMessage.addAll(message);
+    return super.verify(pubKey, augMessage, signature);
+  }
+
+  @override
+  bool aggregateVerify(
+    List<JacobianPoint> pubKeys,
+    List<Uint8List> messages,
+    JacobianPoint signature,
+  ) {
+    if ((pubKeys.length != messages.length) || pubKeys.isEmpty) {
+      return false;
+    }
+
+    List<Uint8List> mPrimes = [];
+    for (int i = 0; i < pubKeys.length; i++) {
+      mPrimes.add(Uint8List.fromList(pubKeys[i].toBytes() + messages[i]));
+    }
+    return super.aggregateVerify(pubKeys, mPrimes, signature);
+  }
+}
