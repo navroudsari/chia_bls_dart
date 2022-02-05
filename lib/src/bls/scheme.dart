@@ -151,3 +151,36 @@ class AugSchemeMPL extends CoreMPL {
     return super.aggregateVerify(pubKeys, mPrimes, signature);
   }
 }
+
+class PopSchemeMPL extends CoreMPL {
+  PopSchemeMPL() : super(popSchemeMPLCSID);
+
+  JacobianPoint popProve(PrivateKey secKey) {
+    var pubKey = secKey.getG1();
+    return g2Map(pubKey.toBytes(), _cipherSuiteId.utf8ToBytes()) * secKey.value;
+  }
+
+  bool popVerify(JacobianPoint pubKey, JacobianPoint proof) {
+    try {
+      proof.checkValid();
+      pubKey.checkValid();
+      var q = g2Map(pubKey.toBytes(), _cipherSuiteId.utf8ToBytes());
+      var one = Fq12.one(defaultEc.q);
+      var pairingResult =
+          atePairingMulti([pubKey, -G1Generator()], [q, proof], defaultEc);
+      return pairingResult == one;
+    } on AssertionError {
+      return false;
+    }
+  }
+
+  bool fastAggregateVerify(
+      List<JacobianPoint> pubKeys, Uint8List message, JacobianPoint signature) {
+    if (pubKeys.isEmpty) return false;
+    JacobianPoint aggregate = pubKeys[0];
+    for (var pubKey in pubKeys.sublist(1)) {
+      aggregate += pubKey;
+    }
+    return super.verify(aggregate, message, signature);
+  }
+}
