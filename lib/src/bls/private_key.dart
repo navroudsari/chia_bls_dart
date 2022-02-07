@@ -7,10 +7,9 @@ import 'extensions/byte_conversion.dart';
 
 class PrivateKey {
   final BigInt value;
+  static int size = 32;
 
   PrivateKey(this.value) : assert(value < defaultEc.n);
-
-  int get size => 32;
 
   static PrivateKey fromBytes(Uint8List bytes) {
     return PrivateKey(bytes.toBigInt() % defaultEc.n);
@@ -31,6 +30,12 @@ class PrivateKey {
               (BigInt previousValue, PrivateKey element) =>
                   previousValue + element.value) %
           defaultEc.n);
+
+  PrivateKey clone() {
+    return PrivateKey(value);
+  }
+
+  bool isZero() => value == BigInt.zero;
 
   Uint8List toBytes() {
     return value.toBytes();

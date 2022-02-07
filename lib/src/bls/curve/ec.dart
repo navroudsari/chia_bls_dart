@@ -179,15 +179,15 @@ JacobianPoint scalarMultJacobian(c, JacobianPoint p1, EC? ec) {
   if (c is Fq) {
     c = c.value;
   }
-  if (p1.infinity || c % ec.q == 0) {
+  if (p1.infinity || c % ec.q == BigInt.zero) {
     return JacobianPoint(Fq.one(ec.q), Fq.one(ec.q), Fq.zero(ec.q), true, ec);
   }
 
   var result =
       JacobianPoint(Fq.one(ec.q), Fq.one(ec.q), Fq.zero(ec.q), true, ec);
   var addend = p1;
-  while (c > 0) {
-    if (c & 1) {
+  while (c > BigInt.zero) {
+    if ((c & BigInt.one) != BigInt.zero) {
       result += addend;
     }
     //double point
@@ -378,14 +378,14 @@ JacobianPoint evalIso(JacobianPoint P, List<List<Fq2>> mapCoeffs, EC ec) {
         zip([i.value.reversed.toList(), zPows.sublist(0, i.value.length)])
             .map((zPowC) {
       return (zPowC[0] as Fq2) * (zPowC[1] as Fq2);
-    }).toList() as List<Fq2>;
+    }).toList();
 
     var tmp = coeffsZ[0];
     for (var coeff in coeffsZ.sublist(1, coeffsZ.length)) {
       tmp = tmp * x as Fq2;
       tmp = tmp + coeff as Fq2;
     }
-    mapVals[i.index] = tmp;
+    mapVals[i.index] = tmp as Fq2;
   }
 
   // xden is of order 1 less than xnum, so one needs to multiply it by an extra factor of Z^2

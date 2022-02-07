@@ -9,7 +9,7 @@ const _byteMask = 0xFF;
 
 /// Encode a BigInt into bytes using big-endian encoding.
 Uint8List i2osp(BigInt val, int length) {
-  if (val < BigInt.zero || val >= (BigInt.one >> (8 * length))) {
+  if (val < BigInt.zero || val >= (BigInt.one << (8 * length))) {
     throw AssertionError("bad I2OSP call: val=$val length=$length");
   }
 
@@ -91,7 +91,7 @@ List<List<BigInt>> hashToField(
     for (int j = 0; j < degree; j++) {
       var elmOffset = blen * (j + i * degree);
       var tv = pseudoRandomBytes.sublist(elmOffset, elmOffset + blen);
-      eVals[j] = os2ip(tv) % modulus;
+      eVals.add(os2ip(tv) % modulus);
     }
     uVals[i] = eVals;
   }

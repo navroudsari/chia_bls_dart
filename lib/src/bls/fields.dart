@@ -139,7 +139,7 @@ abstract class FieldExtBase implements Field {
     ans.root = root;
 
     while (exp != BigInt.zero) {
-      if (exp & BigInt.one != BigInt.zero) {
+      if ((exp & BigInt.one) != BigInt.zero) {
         ans *= base;
       }
       base *= base;
@@ -180,7 +180,7 @@ abstract class FieldExtBase implements Field {
       otherNew = fields.map((field) => baseField._zero(Q)).toList();
       otherNew[0] = otherNew[0] + other;
     } else {
-      otherNew = other;
+      otherNew = other.fields;
     }
 
     var ret = create(
@@ -204,29 +204,30 @@ abstract class FieldExtBase implements Field {
       return ret;
     }
     if (extension < other.extension) {
-      throw UnimplementedError();
+      return other * this;
     }
 
     var buf = fields.map((field) => baseField._zero(Q)).toList();
 
     if (other is FieldExtBase) {
-      fields.asMap().forEach((i, x) {
+      for (var x in enumerate(fields)) {
         if (extension == other.extension) {
-          other.fields.asMap().forEach((j, y) {
-            if (x.toBool() && y.toBool()) {
-              if (i + j >= embedding) {
-                buf[(i + j) % embedding] += x * y * root;
+          for (var y in enumerate(other.fields)) {
+            if (x.value.toBool() && y.value.toBool()) {
+              if (x.index + y.index >= embedding) {
+                buf[(x.index + y.index) % embedding] +=
+                    x.value * y.value * root;
               } else {
-                buf[(i + j) % embedding] += x * y;
+                buf[(x.index + y.index) % embedding] += x.value * y.value;
               }
             }
-          });
+          }
         } else {
-          if (x.toBool()) {
-            buf[i] = x * other;
+          if (x.value.toBool()) {
+            buf[x.index] = x.value * other;
           }
         }
-      });
+      }
     }
     var ret = create(Q, buf);
     ret.root = root;
@@ -269,7 +270,8 @@ abstract class FieldExtBase implements Field {
         }
         throw UnimplementedError();
       }
-      throw UnimplementedError();
+      // throw UnimplementedError();
+      return other == this;
     } else if (other is FieldExtBase) {
       return listsEqual(fields, other.fields) && Q == other.Q;
     } else {
@@ -327,7 +329,7 @@ class Fq implements Field {
     if (other is! Fq) {
       return false;
     }
-    return value.compareTo(other.value) == 0 || Q.compareTo(other.Q) == 0;
+    return value == other.value && Q == other.Q;
   }
 
   @override
@@ -342,17 +344,18 @@ class Fq implements Field {
   }
 
   @override
-  Fq operator *(other) {
+  Field operator *(other) {
     if ((other is! Fq)) {
-      throw UnimplementedError();
+      return other * this;
+      // throw UnimplementedError();
     }
     return Fq(Q, value * other.value);
   }
 
   @override
-  Fq operator +(other) {
+  Field operator +(other) {
     if (other is! Fq) {
-      throw UnimplementedError();
+      return other + this;
     }
     return Fq(Q, value + other.value);
   }
@@ -363,33 +366,40 @@ class Fq implements Field {
   }
 
   @override
-  Fq operator -(other) {
+  Field operator -(other) {
     if (other is! Fq) {
-      throw UnimplementedError();
+      return other - this;
     }
     return Fq(Q, value - other.value);
   }
 
   @override
   Fq operator ~() {
-    BigInt x0 = BigInt.one, x1 = BigInt.zero, y0 = BigInt.one, y1 = BigInt.one;
-    BigInt a = Q, b = value, q;
+    // Extended euclidian algorithm for inversion.
+    var x0 = BigInt.one, x1 = BigInt.zero, y0 = BigInt.zero, y1 = BigInt.one;
+    var a = Q, b = value;
 
     while (a != BigInt.zero) {
-      q = b ~/ a;
+      var _b = b;
+      var _x0 = x0;
+      var _y0 = y0;
+      // (q, b a)
+      var q = b ~/ a;
       b = a;
-      a = b % a;
+      a = _b % a;
+      // (x0, x1)
       x0 = x1;
-      x1 = x0 - q * x1;
+      x1 = _x0 - q * x1;
+      // (y0, y1)
       y0 = y1;
-      y1 = y0 - q * y1;
+      y1 = _y0 - q * y1;
     }
 
     return Fq(Q, x0);
   }
 
   @override
-  Fq operator ~/(other) {
+  Field operator ~/(other) {
     if (other is BigInt && other is! Fq) {
       other = Fq(Q, other);
     }
@@ -397,7 +407,7 @@ class Fq implements Field {
   }
 
   @override
-  Fq operator /(other) => this ~/ other;
+  Field operator /(other) => this ~/ other;
 
   @override
   bool operator <(other) {
@@ -435,16 +445,15 @@ class Fq implements Field {
   Fq _clone() => Fq(Q, value);
 
   @override
-  Fq pow(BigInt exp) {
-    if (exp.compareTo(BigInt.zero) == 0) {
+  Fq pow(BigInt other) {
+    if (other == BigInt.zero) {
       return Fq(Q, BigInt.one);
-    } else if (exp.compareTo(BigInt.one) == 0) {
-      return _clone();
-    }
-    if ((exp % BigInt.two).compareTo(BigInt.zero) == 0) {
-      return Fq(Q, value * value).pow(exp ~/ BigInt.two);
+    } else if (other == BigInt.one) {
+      return Fq(Q, value);
+    } else if ((other % BigInt.two) == BigInt.zero) {
+      return Fq(Q, value * value).pow(other ~/ BigInt.two);
     } else {
-      return Fq(Q, value * value).pow(exp ~/ BigInt.two) * this;
+      return Fq(Q, value * value).pow(other ~/ BigInt.two) * this as Fq;
     }
   }
 
@@ -452,11 +461,11 @@ class Fq implements Field {
   Fq qiPow(int i) => this;
 
   Fq modSqrt() {
-    if (value.compareTo(BigInt.zero) == 0) {
+    if (value == BigInt.zero) {
       return Fq(Q, BigInt.zero);
     }
-    if (value.modPow((Q - BigInt.one) ~/ BigInt.from(2), Q) != BigInt.one) {
-      throw Exception("No sqrt exists");
+    if (value.modPow((Q - BigInt.one) ~/ BigInt.two, Q) != BigInt.one) {
+      throw StateError("No sqrt exists");
     }
     if (Q % BigInt.from(4) == BigInt.from(3)) {
       return Fq(Q, value.modPow((Q + BigInt.one) ~/ BigInt.from(4), Q));
@@ -475,9 +484,9 @@ class Fq implements Field {
 
     var z = BigInt.zero;
 
-    for (BigInt i = BigInt.zero; i.compareTo(S) < 0; i += BigInt.one) {
+    for (var i = BigInt.zero; i < Q; i += BigInt.one) {
       var euler = i.modPow((Q - BigInt.one) ~/ BigInt.two, Q);
-      if (euler == BigInt.from(-1) % Q) {
+      if (euler == -BigInt.one % Q) {
         z = i;
         break;
       }
@@ -486,7 +495,7 @@ class Fq implements Field {
     var M = S;
     var c = z.modPow(q, Q);
     var t = value.modPow(q, Q);
-    var R = value.modPow((q + BigInt.one) ~/ BigInt.from(2), Q);
+    var R = value.modPow((q + BigInt.one) ~/ BigInt.two, Q);
 
     while (true) {
       if (t == BigInt.zero) {
@@ -497,13 +506,13 @@ class Fq implements Field {
       }
       var i = BigInt.zero;
       var f = t;
-      while (f.compareTo(BigInt.one) != 0) {
-        f = f.modPow(BigInt.two, Q);
+      while (f != BigInt.one) {
+        f = f.pow(2) % Q;
         i += BigInt.one;
       }
       var b = c.modPow(BigInt.two.modPow(M - i - BigInt.one, Q), Q);
       M = i;
-      c = b.modPow(BigInt.two, Q);
+      c = b.pow(2) % Q;
       t = (t * c) % Q;
       R = (R * b) % Q;
     }
@@ -550,7 +559,7 @@ class Fq2 extends FieldExtBase {
   @override
   Fq2 operator ~() {
     var a = fields[0], b = fields[1];
-    var factor = ~(a * a + b + b);
+    var factor = ~(a * a + b * b);
     var ret = Fq2(Q, [a * factor, -b * factor]);
     return ret;
   }
@@ -562,19 +571,21 @@ class Fq2 extends FieldExtBase {
 
   Fq2 modSqrt() {
     var a0 = fields[0], a1 = fields[1];
-    if (a1 == Fq.zero(Q)) return _from(Q, (a0 as Fq).modSqrt()) as Fq2;
-    Field alpha, gamma, delta;
+    if (a1 == baseField._zero(Q)) {
+      return _from(Q, (a0 as Fq).modSqrt()) as Fq2;
+    }
+    var alpha, gamma, delta;
     alpha = a0.pow(BigInt.two) + a1.pow(BigInt.two);
     gamma = alpha.pow((Q - BigInt.one) ~/ BigInt.two);
-    if (gamma == Fq(Q, BigInt.from(-1))) throw StateError("No sqrt exists");
+    if (gamma == Fq(Q, -BigInt.one)) throw StateError("No sqrt exists");
     alpha = (alpha as Fq).modSqrt();
     delta = (a0 + alpha) * ~Fq(Q, BigInt.two);
     gamma = delta.pow((Q - BigInt.one) ~/ BigInt.two);
-    if (gamma == Fq(Q, BigInt.from(-1))) {
+    if (gamma == Fq(Q, -BigInt.one)) {
       delta = (a0 - alpha) * ~Fq(Q, BigInt.two);
     }
 
-    Field x0, x1;
+    var x0, x1;
     x0 = (delta as Fq).modSqrt();
     x1 = a1 * ~(Fq(Q, BigInt.two) * x0);
     return Fq2(Q, [x0, x1]);
@@ -667,8 +678,8 @@ class Fq12 extends FieldExtBase {
 }
 
 var rv1 = BigInt.parse(
-    '0x6AF0E0437FF400B6831E36D6BD17FFE48395DABC2D3435E77F76E17009241C5EE67992F72EC05F4C81084FBEDE3CC09',
-    radix: 16);
+  '0x6AF0E0437FF400B6831E36D6BD17FFE48395DABC2D3435E77F76E17009241C5EE67992F72EC05F4C81084FBEDE3CC09',
+);
 
 var rootsOfUnity = [
   Fq2(q, [Fq(q, BigInt.one), Fq(q, BigInt.zero)]),

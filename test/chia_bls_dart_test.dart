@@ -1,6 +1,10 @@
+import 'dart:math';
+
 import 'package:chia_bls_dart/src/bls/extensions/byte_conversion.dart';
+import 'package:chia_bls_dart/src/bls/fields.dart';
 import 'package:chia_bls_dart/src/bls/hd_keys.dart';
 import 'package:chia_bls_dart/src/bls/hkdf.dart';
+import 'package:chia_bls_dart/src/bls/private_key.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -25,6 +29,35 @@ void main() {
       expect(okm[i], equals(okmExpected[i]));
     }
   }
+
+  group('private key tests', () {
+    test('Copy {constructor| assignment operator}', () {
+      PrivateKey pk1 =
+          PrivateKey.fromBytes(Random.secure().nextInt(255).asUint32Bytes());
+      PrivateKey pk2 =
+          PrivateKey.fromBytes(Random.secure().nextInt(255).asUint32Bytes());
+      PrivateKey pk3 = pk2.clone();
+      expect(pk1.isZero(), equals(false));
+      expect(pk2.isZero(), equals(false));
+      expect(pk3.isZero(), equals(false));
+      expect(pk1, isNot(equals(pk2)));
+      expect(pk3, equals(pk2));
+      pk2 = pk1;
+      expect(pk1, equals(pk2));
+      expect(pk3, isNot(equals(pk2)));
+    });
+
+    test('Equality operators', () {
+      PrivateKey pk1 =
+          PrivateKey.fromBytes(Random.secure().nextInt(255).asUint32Bytes());
+      PrivateKey pk2 =
+          PrivateKey.fromBytes(Random.secure().nextInt(255).asUint32Bytes());
+      var pk3 = pk2;
+      expect(pk1, isNot(equals(pk2)));
+      expect(pk1, isNot(equals(pk3)));
+      expect(pk2, equals(pk3));
+    });
+  });
 
   group('RFC5869 Test Vectors', () {
     //https://datatracker.ietf.org/doc/html/rfc5869
@@ -139,5 +172,34 @@ void main() {
           equals(
               '1a1de3346883401f1e3b2281be5774080edb8e5ebe6f776b0f7af9fea942553a'));
     });
+  });
+
+  group('Field Tests', () {
+    var a = Fq(BigInt.from(17), BigInt.from(30));
+    var b = Fq(BigInt.from(17), BigInt.from(-18));
+    var c = Fq2(BigInt.from(17), [a, b]);
+    var d = Fq2(BigInt.from(17), [a + a, Fq(BigInt.from(17), BigInt.from(-5))]);
+    var e = c * d;
+    var f = e * d;
+    var eSq = e * e;
+    var eSqrt = (eSq as Fq2).modSqrt();
+
+    var a2 = Fq(
+      BigInt.parse('172487123095712930573140951348'),
+      BigInt.parse(
+          '3012492130751239573498573249085723940848571098237509182375'),
+    );
+    var b2 = Fq(BigInt.parse('172487123095712930573140951348'),
+        BigInt.parse('3432984572394572309458723045723849'));
+    var c2 = Fq2(BigInt.parse('172487123095712930573140951348'), [a2, b2]);
+    test('Product of multiplying differing fields',
+        () => expect(f, isNot(equals(e))));
+    test(
+        'Square then find root',
+        () => expect(
+              eSqrt.pow(BigInt.two),
+              equals(eSq),
+            ));
+    test('Equality of differing fields', () => expect(b2 == c2, isFalse));
   });
 }
