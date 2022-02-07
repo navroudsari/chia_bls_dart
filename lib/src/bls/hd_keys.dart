@@ -14,8 +14,8 @@ class HdKeys {
 
   static PrivateKey keyGen(Uint8List seed) {
     int L = 48;
-    seed.add(0);
-    var okm = HKDF256.extractExpand(L, seed,
+
+    var okm = HKDF256.extractExpand(L, Uint8List.fromList(seed + [0]),
         'BLS-SIG-KEYGEN-SALT-'.utf8ToBytes(), Uint8List.fromList([0, L]));
     return PrivateKey(os2ip(okm) % defaultEc.n);
   }

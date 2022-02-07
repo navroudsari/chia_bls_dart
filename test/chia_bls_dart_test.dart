@@ -1,4 +1,5 @@
 import 'package:chia_bls_dart/src/bls/extensions/byte_conversion.dart';
+import 'package:chia_bls_dart/src/bls/hd_keys.dart';
 import 'package:chia_bls_dart/src/bls/hkdf.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -80,6 +81,63 @@ void main() {
           "eb01c9cd916653df76ffa61b6ab8a74e254ebfd9bfc43e624cc12a72b0373dee",
           "8faabea85fc0c64e7ca86217cdc6dcdc88551c3244d56719e630a3521063082c46455c2fd5483811f9520a748f0099c1dfcfa52c54e1c22b5cdf70efb0f3c676",
           64);
+    });
+  });
+
+  group('EIP-2333 test vectors', () {
+    // Test vectors are taken from this version of EIP-2333
+
+    // https://github.com/ethereum/EIPs/blob/bf6288335ca92787c2efcdb26449f5be46ef6341/EIPS/eip-2333.md
+
+    test('Test Case 1', () {
+      var sk = HdKeys.keyGen(
+          '3141592653589793238462643383279502884197169399375105820974944592'
+              .hexToBytes());
+      //36167147331491996618072159372207345412841461318189449162487002442599770291484
+      expect(
+          sk.toBytes().toHexString(),
+          equals(
+              '4ff5e145590ed7b71e577bb04032396d1619ff41cb4e350053ed2dce8d1efd1c'));
+    });
+
+    test('Test Case 2', () {
+      var sk = HdKeys.keyGen(
+          '0099FF991111002299DD7744EE3355BBDD8844115566CC55663355668888CC00'
+              .hexToBytes());
+      //13904094584487173309420026178174172335998687531503061311232927109397516192843
+      expect(
+          sk.toBytes().toHexString(),
+          equals(
+              '1ebd704b86732c3f05f30563dee6189838e73998ebc9c209ccff422adee10c4b'));
+    });
+
+    test('Test Case 3', () {
+      var sk = HdKeys.keyGen(
+          'd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3'
+              .hexToBytes());
+      //44010626067374404458092393860968061149521094673473131545188652121635313364506
+      expect(
+          sk.toBytes().toHexString(),
+          equals(
+              '614d21b10c0e4996ac0608e0e7452d5720d95d20fe03c59a3321000a42432e1a'));
+    });
+
+    test('Test Case 4', () {
+      var sk = HdKeys.keyGen(
+          'c55257c360c07c72029aebc1b53c05ed0362ada38ead3e3e9efa3708e53495531f09a6987599d18264c1e1c92f2cf141630c7a3c4ab7c81b2f001698e7463b04'
+              .hexToBytes());
+      //5399117110774477986698372024995405256382522670366369834617409486544348441851
+      expect(
+          sk.toBytes().toHexString(),
+          equals(
+              '0befcabff4a664461cc8f190cdd51c05621eb2837c71a1362df5b465a674ecfb'));
+
+      var child = HdKeys.deriveChildSk(sk, 0);
+      //11812940737387919040225825939013910852517748782307378293770044673328955938106
+      expect(
+          child.toBytes().toHexString(),
+          equals(
+              '1a1de3346883401f1e3b2281be5774080edb8e5ebe6f776b0f7af9fea942553a'));
     });
   });
 }

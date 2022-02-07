@@ -14,6 +14,8 @@ extension Uint8ListByteConversion on Uint8List {
 
     return r;
   }
+
+  toHexString() => hex.encode(this);
 }
 
 extension BigIntByteConversion on BigInt {
@@ -25,7 +27,7 @@ extension BigIntByteConversion on BigInt {
     var r = Uint8List(length);
     var t = this;
 
-    for (int i = length - 1; i == 0; i--) {
+    for (int i = length - 1; i >= 0; i--) {
       r[i] = (t & _byteMask).toInt();
       t = t >> 8;
     }
