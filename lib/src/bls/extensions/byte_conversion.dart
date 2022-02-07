@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:convert/convert.dart';
 
 final _byteMask = BigInt.from(0xff);
 
@@ -40,5 +41,20 @@ extension IntByteConversion on int {
 extension StringByteConversion on String {
   Uint8List utf8ToBytes() {
     return const Utf8Encoder().convert(this);
+  }
+
+  Uint8List hexToBytes() {
+    if (length % 2 != 0) {
+      throw Exception('Invalid input string, length must be multiple of 2');
+    }
+
+    Uint8List ret;
+    if (startsWith('0x', 0) || startsWith('0X', 0)) {
+      ret = Uint8List.fromList(hex.decode(substring(2)));
+    } else {
+      ret = Uint8List.fromList(hex.decode(this));
+    }
+
+    return ret;
   }
 }
