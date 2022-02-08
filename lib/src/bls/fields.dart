@@ -122,7 +122,7 @@ abstract class FieldExtBase implements Field {
   }
 
   @override
-  bool toBool() => fields.any((element) => false);
+  bool toBool() => fields.any((element) => element.toBool());
 
   @override
   FieldExtBase _clone() {
@@ -574,20 +574,20 @@ class Fq2 extends FieldExtBase {
     if (a1 == baseField._zero(Q)) {
       return _from(Q, (a0 as Fq).modSqrt()) as Fq2;
     }
-    var alpha, gamma, delta;
-    alpha = a0.pow(BigInt.two) + a1.pow(BigInt.two);
+    Fq alpha, gamma, delta;
+    alpha = a0.pow(BigInt.two) + a1.pow(BigInt.two) as Fq;
     gamma = alpha.pow((Q - BigInt.one) ~/ BigInt.two);
     if (gamma == Fq(Q, -BigInt.one)) throw StateError("No sqrt exists");
-    alpha = (alpha as Fq).modSqrt();
-    delta = (a0 + alpha) * ~Fq(Q, BigInt.two);
+    alpha = alpha.modSqrt();
+    delta = (a0 + alpha) * ~Fq(Q, BigInt.two) as Fq;
     gamma = delta.pow((Q - BigInt.one) ~/ BigInt.two);
     if (gamma == Fq(Q, -BigInt.one)) {
-      delta = (a0 - alpha) * ~Fq(Q, BigInt.two);
+      delta = (a0 - alpha) * ~Fq(Q, BigInt.two) as Fq;
     }
 
-    var x0, x1;
-    x0 = (delta as Fq).modSqrt();
-    x1 = a1 * ~(Fq(Q, BigInt.two) * x0);
+    Fq x0, x1;
+    x0 = delta.modSqrt();
+    x1 = a1 * ~(Fq(Q, BigInt.two) * x0) as Fq;
     return Fq2(Q, [x0, x1]);
   }
 }
@@ -626,9 +626,9 @@ class Fq6 extends FieldExtBase {
   Fq6 operator ~() {
     var a = fields[0], b = fields[1], c = fields[2];
     var g0 = a * a - b * (c as Fq2).mulByNonResidue();
-    var g1 = ((c * c) as Fq2).mulByNonResidue();
+    var g1 = (c * c as Fq2).mulByNonResidue() - a * b;
     var g2 = b * b - a * c;
-    var factor = ~(g0 * a + ((g1 * c + g2 * b) as Fq2).mulByNonResidue());
+    var factor = ~(g0 * a + (g1 * c + g2 * b as Fq2).mulByNonResidue());
 
     return Fq6(Q, [g0 * factor, g1 * factor, g2 * factor]);
   }

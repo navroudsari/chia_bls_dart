@@ -200,6 +200,19 @@ void main() {
               eSqrt.pow(BigInt.two),
               equals(eSq),
             ));
-    test('Equality of differing fields', () => expect(b2 == c2, isFalse));
+    test('Equality of differing fields', () => expect(b2, isNot(equals(c2))));
+
+    var g = Fq6(BigInt.from(17), [c, d, d * d * c]);
+    var h = Fq6(BigInt.from(17), [
+      a + a * c,
+      c * b * a,
+      b * b * d * Fq(BigInt.from(17), BigInt.from(21))
+    ]);
+    var i = Fq12(BigInt.from(17), [g, h]);
+
+    test('Double inversion', () => (expect(~(~i), equals(i))));
+    // assert (~(i.root)) * i.root == Fq6.one(17)
+    // var x = Fq12(17, Fq6.zero(17), i.root)
+    // assert (~x) * x == Fq12.one(17)
   });
 }
