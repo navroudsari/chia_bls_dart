@@ -290,4 +290,15 @@ void main() {
       expect((g2J + g2J2).toAffine(), equals(g2.toAffine() * BigInt.from(3)));
     });
   });
+
+  group('Test edge case sign FQ2', () {
+    var q = defaultEc.q;
+    var a = Fq(q, BigInt.from(62323));
+    var testCase1 = Fq2(q, [a, Fq(q, BigInt.zero)]);
+    var testCase2 = Fq2(q, [-a, Fq(q, BigInt.zero)]);
+    test('Edge case 1', () => expect(testCase1, isNot(equals(testCase2))));
+    var testCase3 = Fq2(q, [Fq(q, BigInt.zero), a]);
+    var testCase4 = Fq2(q, [Fq(q, BigInt.zero), -a]);
+    test('Edge case 2', () => expect(testCase3, isNot(equals(testCase4))));
+  });
 }
