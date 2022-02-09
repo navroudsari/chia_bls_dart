@@ -3,9 +3,11 @@ import 'dart:math';
 import 'package:chia_bls_dart/src/bls/curve/ec.dart';
 import 'package:chia_bls_dart/src/bls/extensions/byte_conversion.dart';
 import 'package:chia_bls_dart/src/bls/fields.dart';
+import 'package:chia_bls_dart/src/bls/hash_to_field.dart';
 import 'package:chia_bls_dart/src/bls/hd_keys.dart';
 import 'package:chia_bls_dart/src/bls/hkdf.dart';
 import 'package:chia_bls_dart/src/bls/private_key.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -300,5 +302,18 @@ void main() {
     var testCase3 = Fq2(q, [Fq(q, BigInt.zero), a]);
     var testCase4 = Fq2(q, [Fq(q, BigInt.zero), -a]);
     test('Edge case 2', () => expect(testCase3, isNot(equals(testCase4))));
+  });
+
+  group('Test xmd', () {
+    var msg = List.generate(48, (index) => Random.secure().nextInt(255));
+    var dst = List.generate(16, (index) => Random.secure().nextInt(255));
+    var ress = {};
+    for (int l = 16; l <= 8192; l++) {
+      var result = expandMessageXmd(msg, dst, l, sha512);
+      test('check length', () => expect(l, equals(result.length)));
+      var key = result.sublist(0, 16);
+      ress[key] = (ress[key] ?? 0) + 1;
+    }
+    test('check all = 1', () => ress.values.every((element) => element == 1));
   });
 }
