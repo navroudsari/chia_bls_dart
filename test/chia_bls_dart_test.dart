@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:chia_bls_dart/src/bls/curve/ec.dart';
 import 'package:chia_bls_dart/src/bls/extensions/byte_conversion.dart';
 import 'package:chia_bls_dart/src/bls/fields.dart';
 import 'package:chia_bls_dart/src/bls/hd_keys.dart';
@@ -209,10 +210,45 @@ void main() {
       b * b * d * Fq(BigInt.from(17), BigInt.from(21))
     ]);
     var i = Fq12(BigInt.from(17), [g, h]);
+    var x = Fq12(BigInt.from(17), [Fq6.zero(BigInt.from(17)), i.root]);
 
-    test('Double inversion', () => (expect(~(~i), equals(i))));
-    // assert (~(i.root)) * i.root == Fq6.one(17)
-    // var x = Fq12(17, Fq6.zero(17), i.root)
-    // assert (~x) * x == Fq12.one(17)
+    test(
+      'Inversions',
+      () {
+        expect(~(~i), equals(i));
+        expect(~(i.root) * i.root, equals(Fq6.one(BigInt.from(17))));
+        expect((~x) * x, equals(Fq12.one(BigInt.from(17))));
+      },
+    );
+
+    var j = Fq6(BigInt.from(17),
+        [a + a * c, Fq2.zero(BigInt.from(17)), Fq2.zero(BigInt.from(17))]);
+    var j2 = Fq6(BigInt.from(17),
+        [a + a * c, Fq2.zero(BigInt.from(17)), Fq2.one(BigInt.from(17))]);
+
+    test(
+      'Equality',
+      () {
+        expect(j, equals((a + a * c)));
+        expect(j2, isNot(equals((a + a * c))));
+        expect(j, isNot(equals(j2)));
+      },
+    );
+
+    test(
+      'Frob Coeffs',
+      () {
+        var one = Fq(defaultEc.q, BigInt.one);
+        var two = one + one;
+        var a = Fq2(defaultEc.q, [two, two]);
+        var b = Fq6(defaultEc.q, [a, a, a]);
+        var c = Fq12(defaultEc.q, [b, b]);
+        for (var base in [a, b, c]) {
+          for (int expo = 1; expo < base.extension; expo++) {
+            expect(base.qiPow(expo), equals(base.pow(defaultEc.q.pow(expo))));
+          }
+        }
+      },
+    );
   });
 }

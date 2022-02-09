@@ -268,7 +268,7 @@ abstract class FieldExtBase implements Field {
           }
           return fields[0] == other;
         }
-        throw UnimplementedError();
+        return other == this;
       }
       // throw UnimplementedError();
       return other == this;
