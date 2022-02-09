@@ -217,7 +217,7 @@ JacobianPoint G1Generator({EC? ec}) {
 }
 
 JacobianPoint G2Generator({EC? ec}) {
-  ec ??= defaultEc;
+  ec ??= defaultEcTwist;
   return AffinePoint(ec.g2x, ec.g2y, false, ec).toJacobian();
 }
 
@@ -318,7 +318,7 @@ JacobianPoint bytesToPoint(Uint8List buffer, bool isExtension, EC? ec) {
   return AffinePoint(x, y, false, ec).toJacobian();
 }
 
-AffinePoint untwist(AffinePoint point, EC? ec) {
+AffinePoint untwist(AffinePoint point, {EC? ec}) {
   // Given a point on G2 on the twisted curve, this converts its
   // coordinates back from Fq2 to Fq12. See Craig Costello book, look
   // up twists.
@@ -332,7 +332,7 @@ AffinePoint untwist(AffinePoint point, EC? ec) {
   return AffinePoint(newX, newY, false, ec);
 }
 
-AffinePoint twist(AffinePoint point, EC? ec) {
+AffinePoint twist(AffinePoint point, {EC? ec}) {
   // Given an untwisted point, this converts it's
   // coordinates to a point on the twisted curve. See Craig Costello
   // book, look up twists.
@@ -341,8 +341,8 @@ AffinePoint twist(AffinePoint point, EC? ec) {
   var f = Fq12.one(ec.q);
   var wsq = Fq12(ec.q, [f.root, Fq6.zero(ec.q)]);
   var wcu = Fq12(ec.q, [Fq6.zero(ec.q), f.root]);
-  var newX = point.x * wsq;
-  var newY = point.y * wcu;
+  var newX = point.x / wsq;
+  var newY = point.y / wcu;
   return AffinePoint(newX, newY, false, ec);
 }
 

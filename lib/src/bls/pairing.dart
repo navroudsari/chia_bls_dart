@@ -22,7 +22,7 @@ doubleLineEval(AffinePoint R, AffinePoint P, EC? ec) {
 
   ec ??= defaultEc;
 
-  var R12 = untwist(R, ec);
+  var R12 = untwist(R);
 
   var slope = (Fq(ec.q, BigInt.from(3)) * (R12.x.pow(BigInt.two)) + ec.a) /
       (Fq(ec.q, BigInt.two) * R12.y);
@@ -37,8 +37,8 @@ Fq addLineEval(AffinePoint R, AffinePoint Q, AffinePoint P, EC? ec) {
   // f(P).
   ec ??= defaultEc;
 
-  var R12 = untwist(R, ec);
-  var Q12 = untwist(Q, ec);
+  var R12 = untwist(R);
+  var Q12 = untwist(Q);
 
   // This is the case of a vertical line, where the denominator
   //  will be 0.

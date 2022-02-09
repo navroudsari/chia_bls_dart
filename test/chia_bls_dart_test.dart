@@ -38,9 +38,9 @@ void main() {
       PrivateKey pk2 =
           PrivateKey.fromBytes(Random.secure().nextInt(255).asUint32Bytes());
       PrivateKey pk3 = pk2.clone();
-      expect(pk1.isZero(), equals(false));
-      expect(pk2.isZero(), equals(false));
-      expect(pk3.isZero(), equals(false));
+      expect(pk1.isZero(), isFalse);
+      expect(pk2.isZero(), isFalse);
+      expect(pk3.isZero(), isFalse);
       expect(pk1, isNot(equals(pk2)));
       expect(pk3, equals(pk2));
       pk2 = pk1;
@@ -250,5 +250,44 @@ void main() {
         }
       },
     );
+  });
+
+  group('Ellipctic Curve', () {
+    var q = defaultEc.q;
+    var g = G1Generator();
+    var g2 = G2Generator();
+
+    test('G1 tests', () {
+      expect(g.isOnCurve(), isTrue);
+      expect(g * BigInt.two, equals(g + g));
+      expect(g * BigInt.from(3), equals(g + g + g));
+      expect((g * BigInt.from(3)).isOnCurve(), isTrue);
+    });
+
+    test('G2 tests', () {
+      expect(g2.x * (Fq(q, BigInt.two) * g2.y),
+          equals(Fq(q, BigInt.two) * (g2.x * g2.y)));
+      expect(g2.isOnCurve(), isTrue);
+      var s = g2 + g2;
+      expect(untwist(twist(s.toAffine())), equals(s.toAffine()));
+      expect(untwist(twist(s.toAffine()) * BigInt.from(5)),
+          equals((s * BigInt.from(5)).toAffine()));
+      expect(twist(s.toAffine() * BigInt.from(5)),
+          equals(twist((s * BigInt.from(5)).toAffine())));
+      expect(s.isOnCurve(), isTrue);
+      expect(g2.isOnCurve(), isTrue);
+      expect(g2 + g2, equals(g2 * BigInt.two));
+      expect(g2 * BigInt.from(5),
+          equals((g2 * BigInt.two) + (g2 * BigInt.two) + g2));
+      var y = yForX(g2.x, defaultEcTwist);
+      expect(y == g2.y || -y == g2.y, isTrue);
+
+      var gJ = G1Generator(),
+          g2J = G2Generator(),
+          g2J2 = G2Generator() * BigInt.two;
+      expect(g.toAffine().toJacobian(), equals(g));
+      expect((gJ * BigInt.two).toAffine(), equals(g.toAffine() * BigInt.two));
+      expect((g2J + g2J2).toAffine(), equals(g2.toAffine() * BigInt.from(3)));
+    });
   });
 }

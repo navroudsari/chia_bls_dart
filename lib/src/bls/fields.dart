@@ -199,7 +199,6 @@ abstract class FieldExtBase implements Field {
   FieldExtBase operator *(other) {
     if (other is BigInt) {
       var ret = create(Q, fields.map((field) => field * other).toList());
-      ret.Q = Q;
       ret.root = root;
       return ret;
     }
@@ -209,26 +208,24 @@ abstract class FieldExtBase implements Field {
 
     var buf = fields.map((field) => baseField._zero(Q)).toList();
 
-    if (other is FieldExtBase) {
-      for (var x in enumerate(fields)) {
-        if (extension == other.extension) {
-          for (var y in enumerate(other.fields)) {
-            if (x.value.toBool() && y.value.toBool()) {
-              if (x.index + y.index >= embedding) {
-                buf[(x.index + y.index) % embedding] +=
-                    x.value * y.value * root;
-              } else {
-                buf[(x.index + y.index) % embedding] += x.value * y.value;
-              }
+    for (var x in enumerate(fields)) {
+      if (extension == other.extension) {
+        for (var y in enumerate(other.fields)) {
+          if (x.value.toBool() && y.value.toBool()) {
+            if (x.index + y.index >= embedding) {
+              buf[(x.index + y.index) % embedding] += x.value * y.value * root;
+            } else {
+              buf[(x.index + y.index) % embedding] += x.value * y.value;
             }
           }
-        } else {
-          if (x.value.toBool()) {
-            buf[x.index] = x.value * other;
-          }
+        }
+      } else {
+        if (x.value.toBool()) {
+          buf[x.index] = x.value * other;
         }
       }
     }
+
     var ret = create(Q, buf);
     ret.root = root;
     return ret;
@@ -270,7 +267,6 @@ abstract class FieldExtBase implements Field {
         }
         return other == this;
       }
-      // throw UnimplementedError();
       return other == this;
     } else if (other is FieldExtBase) {
       return listsEqual(fields, other.fields) && Q == other.Q;
@@ -347,7 +343,6 @@ class Fq implements Field {
   Field operator *(other) {
     if ((other is! Fq)) {
       return other * this;
-      // throw UnimplementedError();
     }
     return Fq(Q, value * other.value);
   }
