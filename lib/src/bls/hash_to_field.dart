@@ -14,12 +14,12 @@ Uint8List i2osp(BigInt val, int length) {
   }
 
   int size = (val.bitLength + 7) >> 3;
-  var ret = Uint8List(size);
+  var ret = List.filled(length, 0);
   for (int i = 0; i < size; i++) {
     ret[size - i - 1] = (val & BigInt.from(_byteMask)).toInt();
     val = val >> 8;
   }
-  return ret;
+  return Uint8List.fromList(ret);
 }
 
 //  defined in RFC 3447, section 4.2

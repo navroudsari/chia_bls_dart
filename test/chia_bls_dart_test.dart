@@ -6,6 +6,7 @@ import 'package:chia_bls_dart/src/bls/fields.dart';
 import 'package:chia_bls_dart/src/bls/hash_to_field.dart';
 import 'package:chia_bls_dart/src/bls/hd_keys.dart';
 import 'package:chia_bls_dart/src/bls/hkdf.dart';
+import 'package:chia_bls_dart/src/bls/op_swu_g2.dart';
 import 'package:chia_bls_dart/src/bls/private_key.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -315,5 +316,36 @@ void main() {
       ress[key] = (ress[key] ?? 0) + 1;
     }
     test('check all = 1', () => ress.values.every((element) => element == 1));
+  });
+
+  group('Test swu', () {
+    var dst1 =
+        'QUUX-V01-CS02-with-BLS12381G2_XMD:SHA-256_SSWU_RO_'.utf8ToBytes();
+    var msg1 = 'abcdef0123456789'.utf8ToBytes();
+    var res = g2Map(msg1, dst1).toAffine();
+    test(
+        'test case 1',
+        () => expect(
+            ((res.x as Fq2).fields[0] as Fq).value,
+            equals(BigInt.parse(
+                '0x121982811D2491FDE9BA7ED31EF9CA474F0E1501297F68C298E9F4C0028ADD35AEA8BB83D53C08CFC007C1E005723CD0'))));
+    test(
+        'test case 2',
+        () => expect(
+            ((res.x as Fq2).fields[1] as Fq).value,
+            equals(BigInt.parse(
+                '0x190D119345B94FBD15497BCBA94ECF7DB2CBFD1E1FE7DA034D26CBBA169FB3968288B3FAFB265F9EBD380512A71C3F2C'))));
+    test(
+        'test case 3',
+        () => expect(
+            ((res.y as Fq2).fields[0] as Fq).value,
+            equals(BigInt.parse(
+                '0x05571A0F8D3C08D094576981F4A3B8EDA0A8E771FCDCC8ECCEAF1356A6ACF17574518ACB506E435B639353C2E14827C8'))));
+    test(
+        'test case 4',
+        () => expect(
+            ((res.y as Fq2).fields[1] as Fq).value,
+            equals(BigInt.parse(
+                '0x0BB5E7572275C567462D91807DE765611490205A941A5A6AF3B1691BFE596C31225D3AABDF15FAFF860CB4EF17C7C3BE'))));
   });
 }
