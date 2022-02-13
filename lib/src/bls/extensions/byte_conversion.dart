@@ -18,12 +18,24 @@ extension Uint8ListByteConversion on Uint8List {
   toHexString() => hex.encode(this);
 }
 
+extension ListByteConversion on List {
+  BigInt toBigInt() {
+    BigInt r = BigInt.zero;
+
+    for (final byte in this) {
+      r = (r << 8) | BigInt.from(byte);
+    }
+
+    return r;
+  }
+}
+
 extension BigIntByteConversion on BigInt {
   Uint8List toBytes({Endian endian = Endian.big}) {
     if (this < BigInt.zero) {
       throw AssertionError("Cannot convert signed BigInt");
     }
-    var length = (bitLength + 7) >> 3;
+    var length = (bitLength + 8) >> 3;
     var r = Uint8List(length);
     var t = this;
 

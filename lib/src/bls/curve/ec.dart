@@ -227,17 +227,17 @@ JacobianPoint G1Infinity({EC? ec}) {
 }
 
 JacobianPoint G2Infinity({EC? ec}) {
-  ec ??= defaultEc;
+  ec ??= defaultEcTwist;
   return JacobianPoint(Fq2.one(ec.q), Fq2.one(ec.q), Fq2.one(ec.q), true, ec);
 }
 
-JacobianPoint G1FromBytes(Uint8List bytes, EC? ec) {
+JacobianPoint G1FromBytes(Uint8List bytes, {EC? ec}) {
   ec ??= defaultEc;
   return bytesToPoint(bytes, false, ec);
 }
 
-JacobianPoint G2FromBytes(Uint8List bytes, EC? ec) {
-  ec ??= defaultEc;
+JacobianPoint G2FromBytes(Uint8List bytes, {EC? ec}) {
+  ec ??= defaultEcTwist;
   return bytesToPoint(bytes, true, ec);
 }
 
@@ -258,7 +258,6 @@ Uint8List pointToBytes(JacobianPoint pointJ, bool isExtension, EC? ec) {
   } else {
     sign = signFq(point.y as Fq, ec);
   }
-
   if (sign) {
     output[0] |= 0xA0;
   } else {
@@ -309,11 +308,14 @@ JacobianPoint bytesToPoint(Uint8List buffer, bool isExtension, EC? ec) {
   }
 
   var x =
-      isExtension ? Fq.fromBytes(buffer, ec.q) : Fq2.fromBytes(buffer, ec.q);
+      isExtension ? Fq2.fromBytes(buffer, ec.q) : Fq.fromBytes(buffer, ec.q);
   var yValue = yForX(x, ec);
-  var signFn = isExtension == false ? signFq : signFq2;
-
-  var y = signFn(yValue, ec) == (SBit != 0) ? yValue : -yValue;
+  var y;
+  if (isExtension) {
+    y = signFq2(yValue, ec) == (SBit != 0) ? yValue : -yValue;
+  } else {
+    y = signFq(yValue, ec) == (SBit != 0) ? yValue : -yValue;
+  }
 
   return AffinePoint(x, y, false, ec).toJacobian();
 }
@@ -327,8 +329,8 @@ AffinePoint untwist(AffinePoint point, {EC? ec}) {
   var f = Fq12.one(ec.q);
   var wsq = Fq12(ec.q, [f.root, Fq6.zero(ec.q)]);
   var wcu = Fq12(ec.q, [Fq6.zero(ec.q), f.root]);
-  var newX = point.x * wsq;
-  var newY = point.y * wcu;
+  var newX = point.x / wsq;
+  var newY = point.y / wcu;
   return AffinePoint(newX, newY, false, ec);
 }
 
@@ -341,8 +343,8 @@ AffinePoint twist(AffinePoint point, {EC? ec}) {
   var f = Fq12.one(ec.q);
   var wsq = Fq12(ec.q, [f.root, Fq6.zero(ec.q)]);
   var wcu = Fq12(ec.q, [Fq6.zero(ec.q), f.root]);
-  var newX = point.x / wsq;
-  var newY = point.y / wcu;
+  var newX = point.x * wsq;
+  var newY = point.y * wcu;
   return AffinePoint(newX, newY, false, ec);
 }
 

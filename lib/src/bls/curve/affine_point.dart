@@ -37,7 +37,7 @@ class AffinePoint {
 
   AffinePoint operator +(AffinePoint other) {
     if (other is! AffinePoint) throw ArgumentError('Incorrect object');
-    return addPoints(this, other);
+    return addPoints(this, other, ec: ec);
   }
 
   AffinePoint operator -() => AffinePoint(x, -y, infinity, ec);
@@ -64,8 +64,4 @@ class AffinePoint {
   @override
   String toString() =>
       'AffinePoint(x=${x.toString()}, y=${y.toString()}, i=${infinity.toString()})';
-
-  AffinePoint negate() {
-    return AffinePoint(x, -y, infinity, ec);
-  }
 }

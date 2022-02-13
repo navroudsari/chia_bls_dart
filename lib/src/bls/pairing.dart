@@ -15,7 +15,7 @@ Uint8List intToBits(BigInt i) {
   return Uint8List.fromList(bits.reversed.toList());
 }
 
-doubleLineEval(AffinePoint R, AffinePoint P, EC? ec) {
+Field doubleLineEval(AffinePoint R, AffinePoint P, EC? ec) {
   // Creates an equation for a line tangent to R,
   // and evaluates this at the point P. f(x) = y - sv - v.
   // f(P).
@@ -24,14 +24,14 @@ doubleLineEval(AffinePoint R, AffinePoint P, EC? ec) {
 
   var R12 = untwist(R);
 
-  var slope = (Fq(ec.q, BigInt.from(3)) * (R12.x.pow(BigInt.two)) + ec.a) /
+  var slope = (Fq(ec.q, BigInt.from(3)) * R12.x.pow(BigInt.two) + ec.a) /
       (Fq(ec.q, BigInt.two) * R12.y);
   var v = R12.y - slope * R12.x;
 
   return P.y - P.x * slope - v;
 }
 
-Fq addLineEval(AffinePoint R, AffinePoint Q, AffinePoint P, EC? ec) {
+Field addLineEval(AffinePoint R, AffinePoint Q, AffinePoint P, EC? ec) {
   // Creates an equation for a line between R and Q,
   // and evaluates this at the point P. f(x) = y - sv - v.
   // f(P).
@@ -42,14 +42,14 @@ Fq addLineEval(AffinePoint R, AffinePoint Q, AffinePoint P, EC? ec) {
 
   // This is the case of a vertical line, where the denominator
   //  will be 0.
-  if (R12 == Q12.negate()) {
-    return (P.x - R12.x as Fq);
+  if (R12 == -Q12) {
+    return P.x - R12.x as Fq;
   }
 
   var slope = (Q12.y - R12.y) / (Q12.x - R12.x);
   var v = (Q12.y * R12.x - R12.y * Q12.x) / (R12.x - Q12.x);
 
-  return (P.y - P.x * slope - v as Fq);
+  return P.y - P.x * slope - v;
 }
 
 Fq12 millerLoop(BigInt T, AffinePoint P, AffinePoint Q, EC? ec) {

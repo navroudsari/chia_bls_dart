@@ -7,6 +7,7 @@ import 'package:chia_bls_dart/src/bls/hash_to_field.dart';
 import 'package:chia_bls_dart/src/bls/hd_keys.dart';
 import 'package:chia_bls_dart/src/bls/hkdf.dart';
 import 'package:chia_bls_dart/src/bls/op_swu_g2.dart';
+import 'package:chia_bls_dart/src/bls/pairing.dart';
 import 'package:chia_bls_dart/src/bls/private_key.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -311,7 +312,7 @@ void main() {
     var ress = {};
     for (int l = 16; l <= 8192; l++) {
       var result = expandMessageXmd(msg, dst, l, sha512);
-      test('check length', () => expect(l, equals(result.length)));
+      test('of 8192 - check length', () => expect(l, equals(result.length)));
       var key = result.sublist(0, 16);
       ress[key] = (ress[key] ?? 0) + 1;
     }
@@ -347,5 +348,76 @@ void main() {
             ((res.y as Fq2).fields[1] as Fq).value,
             equals(BigInt.parse(
                 '0x0BB5E7572275C567462D91807DE765611490205A941A5A6AF3B1691BFE596C31225D3AABDF15FAFF860CB4EF17C7C3BE'))));
+  });
+
+  group('Test Elements', () {
+    var i1 = [1, 2].toBigInt();
+    var i2 = [3, 1, 4, 1, 5, 9].toBigInt();
+    var b1 = i1;
+    var b2 = i2;
+    var g1 = G1Generator();
+    var g2 = G2Generator();
+    var u1 = G1Infinity();
+    var u2 = G2Infinity();
+
+    var x1 = g1 * b1;
+    var x2 = g1 * b2;
+    var y1 = g2 * b1;
+    var y2 = g2 * b2;
+
+    var left = x1 + u1;
+    var right = x1;
+    test('G1', () {
+      expect(x1, isNot(equals(x2)));
+      expect(x1 * b1, equals(x1 * b1));
+      expect(x1 * b1, isNot(equals(x1 * b2)));
+      expect(left, equals(right));
+      expect(x1 + x2, equals(x2 + x1));
+      expect(x1 + -x1, equals(u1));
+      expect(x1, equals(G1FromBytes(x1.toBytes())));
+      var copy = x1.clone();
+      expect(x1, equals(copy));
+      x1 += x2;
+      expect(x1, isNot(equals(copy)));
+    });
+
+    test('G2', () {
+      expect(y1, isNot(equals(y2)));
+      expect(y1 * b1, equals(y1 * b1));
+      expect(y1 * b1, isNot(equals(y1 * b2)));
+      expect(y1 + u2, equals(y1));
+      expect(y1 + y2, equals(y2 + y1));
+      expect(y1 + -y1, equals(u2));
+      expect(y1, equals(G2FromBytes(y1.toBytes())));
+      var copy = y1.clone();
+      expect(y1, equals(copy));
+      y1 += y2;
+      expect(y1, isNot(equals(copy)));
+    });
+
+    x1 += x2;
+    y1 += y2;
+
+    test('Pairing operation', () {
+      var pair = atePairing(x1, y1, defaultEc);
+      expect(pair, isNot(equals(atePairing(x1, y2, defaultEc))));
+    });
+
+    // # pairing operation
+    // pair = ate_pairing(x1, y1)
+    // expect(pair != ate_pairing(x1, y2)
+    // expect(pair != ate_pairing(x2, y1)
+    // copy = deepcopy(pair)
+    // expect(pair == copy
+    // pair = None
+    // expect(pair != copy
+
+    // sk = 728934712938472938472398074
+    // pk = sk * g1
+    // Hm = y2 * 12371928312 + y2 * 12903812903891023
+
+    // sig = Hm * sk
+
+    // expect(ate_pairing(g1, sig) == ate_pairing(pk, Hm)
   });
 }

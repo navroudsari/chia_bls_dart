@@ -113,7 +113,7 @@ abstract class FieldExtBase implements Field {
 
   @override
   Uint8List toBytes() {
-    var bytes = Uint8List(0);
+    List<int> bytes = [];
     for (var field in fields.reversed) {
       bytes.addAll(field.toBytes());
     }
@@ -363,7 +363,7 @@ class Fq implements Field {
   @override
   Field operator -(other) {
     if (other is! Fq) {
-      return other - this;
+      return this + (-other);
     }
     return Fq(Q, value - other.value);
   }

@@ -80,6 +80,10 @@ class JacobianPoint {
 
   Uint8List toBytes() => pointToBytes(this, isExtension, ec);
 
+  JacobianPoint clone() {
+    return JacobianPoint(x, y, z, infinity, ec);
+  }
+
   @override
   int get hashCode => hash4(x, y, z, infinity);
 
