@@ -15,7 +15,7 @@ abstract class Field implements FieldOperators {
   Field _fromBytes(Uint8List bytes, BigInt Q);
   Field _zero(BigInt Q);
   Field _one(BigInt Q);
-  Field _clone();
+  Field clone();
 
   Field pow(BigInt exp);
   Field qiPow(int i);
@@ -125,8 +125,8 @@ abstract class FieldExtBase implements Field {
   bool toBool() => fields.any((element) => element.toBool());
 
   @override
-  FieldExtBase _clone() {
-    var ret = create(Q, fields.map((field) => field._clone()).toList());
+  FieldExtBase clone() {
+    var ret = create(Q, fields.map((field) => field.clone()).toList());
     ret.root = root;
     return ret;
   }
@@ -437,7 +437,7 @@ class Fq implements Field {
   }
 
   @override
-  Fq _clone() => Fq(Q, value);
+  Fq clone() => Fq(Q, value);
 
   @override
   Fq pow(BigInt other) {

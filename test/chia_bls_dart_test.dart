@@ -401,23 +401,18 @@ void main() {
     test('Pairing operation', () {
       var pair = atePairing(x1, y1, defaultEc);
       expect(pair, isNot(equals(atePairing(x1, y2, defaultEc))));
+      expect(pair, isNot(equals(atePairing(x2, y1, defaultEc))));
+      var copy = pair.clone();
+      expect(pair, equals(copy));
+      var sk = BigInt.parse('728934712938472938472398074');
+      var pk = g1 * sk;
+      var Hm =
+          y2 * BigInt.from(12371928312) + y2 * BigInt.from(12903812903891023);
+
+      var sig = Hm * sk;
+
+      expect(atePairing(g1, sig, defaultEc),
+          equals(atePairing(pk, Hm, defaultEc)));
     });
-
-    // # pairing operation
-    // pair = ate_pairing(x1, y1)
-    // expect(pair != ate_pairing(x1, y2)
-    // expect(pair != ate_pairing(x2, y1)
-    // copy = deepcopy(pair)
-    // expect(pair == copy
-    // pair = None
-    // expect(pair != copy
-
-    // sk = 728934712938472938472398074
-    // pk = sk * g1
-    // Hm = y2 * 12371928312 + y2 * 12903812903891023
-
-    // sig = Hm * sk
-
-    // expect(ate_pairing(g1, sig) == ate_pairing(pk, Hm)
   });
 }
