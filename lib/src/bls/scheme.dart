@@ -15,7 +15,7 @@ const augSchemeMPLCSID = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_';
 const popSchemeMPLCSID = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_';
 const popSchemeMPLPopCSID = 'BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_';
 
-abstract class CoreMPL {
+class CoreMPL {
   final String _cipherSuiteId;
 
   CoreMPL(String csId) : _cipherSuiteId = csId;
@@ -121,8 +121,16 @@ class AugSchemeMPL extends CoreMPL {
 
   JacobianPoint _signPrependPk(
       PrivateKey secKey, Uint8List message, JacobianPoint prependPk) {
-    var augMessage = prependPk.toBytes();
-    augMessage.addAll(message);
+    var ppk = prependPk.toBytes();
+    var augMessage = Uint8List(ppk.length + message.length);
+
+    for (int i = 0; i < ppk.length; i++) {
+      augMessage[i] = ppk[i];
+    }
+    for (int i = 0; i < message.length; i++) {
+      augMessage[ppk.length + i] = message[i];
+    }
+
     return super.sign(secKey, augMessage);
   }
 
@@ -157,14 +165,15 @@ class PopSchemeMPL extends CoreMPL {
 
   JacobianPoint popProve(PrivateKey secKey) {
     var pubKey = secKey.getG1();
-    return g2Map(pubKey.toBytes(), _cipherSuiteId.utf8ToBytes()) * secKey.value;
+    return g2Map(pubKey.toBytes(), popSchemeMPLPopCSID.utf8ToBytes()) *
+        secKey.value;
   }
 
   bool popVerify(JacobianPoint pubKey, JacobianPoint proof) {
     try {
       proof.checkValid();
       pubKey.checkValid();
-      var q = g2Map(pubKey.toBytes(), _cipherSuiteId.utf8ToBytes());
+      var q = g2Map(pubKey.toBytes(), popSchemeMPLPopCSID.utf8ToBytes());
       var one = Fq12.one(defaultEc.q);
       var pairingResult =
           atePairingMulti([pubKey, -G1Generator()], [q, proof], defaultEc);

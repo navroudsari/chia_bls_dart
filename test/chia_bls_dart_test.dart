@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:chia_bls_dart/src/bls/curve/ec.dart';
 import 'package:chia_bls_dart/src/bls/extensions/byte_conversion.dart';
@@ -9,6 +10,7 @@ import 'package:chia_bls_dart/src/bls/hkdf.dart';
 import 'package:chia_bls_dart/src/bls/op_swu_g2.dart';
 import 'package:chia_bls_dart/src/bls/pairing.dart';
 import 'package:chia_bls_dart/src/bls/private_key.dart';
+import 'package:chia_bls_dart/src/bls/scheme.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -413,6 +415,125 @@ void main() {
 
       expect(atePairing(g1, sig, defaultEc),
           equals(atePairing(pk, Hm, defaultEc)));
+    });
+  });
+
+  group('Chia Test Vectors', () {
+    test('Chia test vectors 1 (Basic)', () {
+      var seed1 = Uint8List.fromList(List.filled(32, 0x00));
+      var seed2 = Uint8List.fromList(List.filled(32, 0x01));
+      var msg1 = Uint8List.fromList([7, 8, 9]);
+      var msg2 = Uint8List.fromList([10, 11, 12]);
+      var sk1 = BasicSchemeMPL().keyGen(seed1);
+      var sk2 = BasicSchemeMPL().keyGen(seed2);
+
+      expect(
+          sk1.toBytes().toHexString(),
+          equals(
+              '4a353be3dac091a0a7e640620372f5e1e2e4401717c1e79cac6ffba8f6905604'));
+      expect(
+          sk1.getG1().toBytes().toHexString(),
+          equals(
+              '85695fcbc06cc4c4c9451f4dce21cbf8de3e5a13bf48f44cdbb18e2038ba7b8bb1632d7911ef1e2e08749bddbf165352'));
+
+      var sig1 = BasicSchemeMPL().sign(sk1, msg1);
+      var sig2 = BasicSchemeMPL().sign(sk2, msg2);
+
+      expect(
+          sig1.toBytes().toHexString(),
+          equals(
+              'b8faa6d6a3881c9fdbad803b170d70ca5cbf1e6ba5a586262df368c75acd1d1ffa3ab6ee21c71f844494659878f5eb230c958dd576b08b8564aad2ee0992e85a1e565f299cd53a285de729937f70dc176a1f01432129bb2b94d3d5031f8065a1'));
+      expect(
+          sig2.toBytes().toHexString(),
+          equals(
+              'a9c4d3e689b82c7ec7e838dac2380cb014f9a08f6cd6ba044c263746e39a8f7a60ffee4afb78f146c2e421360784d58f0029491e3bd8ab84f0011d258471ba4e87059de295d9aba845c044ee83f6cf2411efd379ef38bf4cf41d5f3c0ae1205d'));
+
+      var aggSig1 = BasicSchemeMPL().aggregateSignatures([sig1, sig2]);
+      expect(
+          aggSig1.toBytes().toHexString(),
+          equals(
+              "aee003c8cdaf3531b6b0ca354031b0819f7586b5846796615aee8108fec75ef838d181f9d24"
+              "4a94d195d7b0231d4afcf06f27f0cc4d3c72162545c240de7d5034a7ef3a2a03c0159de982fb"
+              "c2e7790aeb455e27beae91d64e077c70b5506dea3"));
+      expect(
+          BasicSchemeMPL().aggregateVerify(
+              [sk1.getG1(), sk2.getG1()], [msg1, msg2], aggSig1),
+          isTrue);
+
+      var msg3 = Uint8List.fromList([1, 2, 3]);
+      var msg4 = Uint8List.fromList([1, 2, 3, 4]);
+      var msg5 = Uint8List.fromList([1, 2]);
+
+      var sig3 = BasicSchemeMPL().sign(sk1, msg3);
+      var sig4 = BasicSchemeMPL().sign(sk1, msg4);
+      var sig5 = BasicSchemeMPL().sign(sk2, msg5);
+
+      var aggSig2 = BasicSchemeMPL().aggregateSignatures([sig3, sig4, sig5]);
+
+      expect(
+          BasicSchemeMPL().aggregateVerify(
+              [sk1.getG1(), sk1.getG1(), sk2.getG1()],
+              [msg3, msg4, msg5],
+              aggSig2),
+          isTrue);
+
+      expect(
+          aggSig2.toBytes().toHexString(),
+          equals(
+              "a0b1378d518bea4d1100adbc7bdbc4ff64f2c219ed6395cd36fe5d2aa44a4b8e710b607afd9"
+              "65e505a5ac3283291b75413d09478ab4b5cfbafbeea366de2d0c0bcf61deddaa521f6020460f"
+              "d547ab37659ae207968b545727beba0a3c5572b9c"));
+    });
+
+    test('Chia test vectors 2 (Augmented, aggregate of aggregates)', () {
+      var msg1 = Uint8List.fromList([1, 2, 3, 40]);
+      var msg2 = Uint8List.fromList([5, 6, 70, 201]);
+      var msg3 = Uint8List.fromList([9, 10, 11, 12, 13]);
+      var msg4 = Uint8List.fromList([15, 63, 244, 92, 0, 1]);
+
+      var seed1 = Uint8List.fromList(List.filled(32, 0x02));
+      var seed2 = Uint8List.fromList(List.filled(32, 0x03));
+
+      var sk1 = AugSchemeMPL().keyGen(seed1);
+      var sk2 = AugSchemeMPL().keyGen(seed2);
+
+      var pk1 = sk1.getG1();
+      var pk2 = sk2.getG1();
+
+      var sig1 = AugSchemeMPL().sign(sk1, msg1);
+      var sig2 = AugSchemeMPL().sign(sk2, msg2);
+      var sig3 = AugSchemeMPL().sign(sk2, msg1);
+      var sig4 = AugSchemeMPL().sign(sk1, msg3);
+      var sig5 = AugSchemeMPL().sign(sk1, msg1);
+      var sig6 = AugSchemeMPL().sign(sk1, msg4);
+
+      var aggSigL = AugSchemeMPL().aggregateSignatures([sig1, sig2]);
+      var aggSigR = AugSchemeMPL().aggregateSignatures([sig3, sig4, sig5]);
+      var aggSig = AugSchemeMPL().aggregateSignatures([aggSigL, aggSigR, sig6]);
+
+      expect(
+          AugSchemeMPL().aggregateVerify([pk1, pk2, pk2, pk1, pk1, pk1],
+              [msg1, msg2, msg1, msg3, msg1, msg4], aggSig),
+          isTrue);
+
+      expect(
+          aggSig.toBytes().toHexString(),
+          equals(
+              "a1d5360dcb418d33b29b90b912b4accde535cf0e52caf467a005dc632d9f7af44b6c4e9acd4"
+              "6eac218b28cdb07a3e3bc087df1cd1e3213aa4e11322a3ff3847bbba0b2fd19ddc25ca964871"
+              "997b9bceeab37a4c2565876da19382ea32a962200"));
+    });
+
+    test('Chia test vectors 3 (PoP)', () {
+      Uint8List seed1 = Uint8List.fromList(List.filled(32, 0x04));
+      var sk1 = PopSchemeMPL().keyGen(seed1);
+      var proof = PopSchemeMPL().popProve(sk1);
+      expect(
+          proof.toBytes().toHexString(),
+          equals(
+              "84f709159435f0dc73b3e8bf6c78d85282d19231555a8ee3b6e2573aaf66872d9203fefa1ef"
+              "700e34e7c3f3fb28210100558c6871c53f1ef6055b9f06b0d1abe22ad584ad3b957f3018a8f5"
+              "8227c6c716b1e15791459850f2289168fa0cf9115"));
     });
   });
 }

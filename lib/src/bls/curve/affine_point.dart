@@ -55,7 +55,7 @@ class AffinePoint {
     if (other is! AffinePoint) {
       return false;
     }
-    return (x == other.x && y == other.y && infinity == other.infinity);
+    return x == other.x && y == other.y && infinity == other.infinity;
   }
 
   @override

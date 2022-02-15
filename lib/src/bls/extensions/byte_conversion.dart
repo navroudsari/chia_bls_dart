@@ -18,7 +18,7 @@ extension Uint8ListByteConversion on Uint8List {
   toHexString() => hex.encode(this);
 }
 
-extension ListByteConversion on List {
+extension ListByteConversion on List<int> {
   BigInt toBigInt() {
     BigInt r = BigInt.zero;
 
@@ -28,6 +28,8 @@ extension ListByteConversion on List {
 
     return r;
   }
+
+  toHexString() => hex.encode(this);
 }
 
 extension BigIntByteConversion on BigInt {
@@ -35,16 +37,22 @@ extension BigIntByteConversion on BigInt {
     if (this < BigInt.zero) {
       throw AssertionError("Cannot convert signed BigInt");
     }
-    var length = (bitLength + 8) >> 3;
-    var r = Uint8List(length);
+
+    // Calculate the length in bytes from bitlength
+    var l = ((bitLength + 8) >> 3);
+    var m = l % 8;
+    var r = m == 0 ? false : true;
+    var lengthInBytes = r ? l - m + 8 : l;
+
+    var b = Uint8List(lengthInBytes);
     var t = this;
 
-    for (int i = length - 1; i >= 0; i--) {
-      r[i] = (t & _byteMask).toInt();
+    for (int i = lengthInBytes - 1; i >= 0; i--) {
+      b[i] = (t & _byteMask).toInt();
       t = t >> 8;
     }
 
-    return endian == Endian.big ? r : Uint8List.fromList(r.reversed.toList());
+    return endian == Endian.big ? b : Uint8List.fromList(b.reversed.toList());
   }
 }
 

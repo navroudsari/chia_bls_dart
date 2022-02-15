@@ -223,12 +223,12 @@ JacobianPoint G2Generator({EC? ec}) {
 
 JacobianPoint G1Infinity({EC? ec}) {
   ec ??= defaultEc;
-  return JacobianPoint(Fq.one(ec.q), Fq.one(ec.q), Fq.one(ec.q), true, ec);
+  return JacobianPoint(Fq.one(ec.q), Fq.one(ec.q), Fq.zero(ec.q), true, ec);
 }
 
 JacobianPoint G2Infinity({EC? ec}) {
   ec ??= defaultEcTwist;
-  return JacobianPoint(Fq2.one(ec.q), Fq2.one(ec.q), Fq2.one(ec.q), true, ec);
+  return JacobianPoint(Fq2.one(ec.q), Fq2.one(ec.q), Fq2.zero(ec.q), true, ec);
 }
 
 JacobianPoint G1FromBytes(Uint8List bytes, {EC? ec}) {
