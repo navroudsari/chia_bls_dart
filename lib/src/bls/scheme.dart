@@ -137,8 +137,15 @@ class AugSchemeMPL extends CoreMPL {
   @override
   bool verify(
       JacobianPoint pubKey, Uint8List message, JacobianPoint signature) {
-    var augMessage = pubKey.toBytes();
-    augMessage.addAll(message);
+    var ppk = pubKey.toBytes();
+    var augMessage = Uint8List(ppk.length + message.length);
+
+    for (int i = 0; i < ppk.length; i++) {
+      augMessage[i] = ppk[i];
+    }
+    for (int i = 0; i < message.length; i++) {
+      augMessage[ppk.length + i] = message[i];
+    }
     return super.verify(pubKey, augMessage, signature);
   }
 

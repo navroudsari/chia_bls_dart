@@ -23,13 +23,14 @@ class PrivateKey {
     return PrivateKey(n % defaultEc.n);
   }
 
-  static aggregate(List<PrivateKey> privateKeys) =>
-      // Aggregates private keys together
-      PrivateKey(privateKeys.fold(
-              BigInt.zero,
-              (BigInt previousValue, PrivateKey element) =>
-                  previousValue + element.value) %
-          defaultEc.n);
+  static aggregate(List<PrivateKey> privateKeys) {
+    var sum = privateKeys.fold(
+        BigInt.zero,
+        (BigInt previousValue, PrivateKey element) =>
+            previousValue + element.value);
+
+    return PrivateKey(sum % defaultEc.n);
+  }
 
   PrivateKey clone() {
     return PrivateKey(value);

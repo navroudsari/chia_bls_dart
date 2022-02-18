@@ -71,7 +71,8 @@ class HdKeys {
       throw Exception("Expected index to be uint32");
     }
 
-    var g1 = parentSk.getG1().toBytes() + index.asUint32Bytes();
+    var g1 =
+        parentSk.getG1().toBytes() + index.asUint32Bytes().reversed.toList();
     var digest = Uint8List.fromList(sha256.convert(g1).bytes);
 
     return PrivateKey.aggregate([PrivateKey.fromBytes(digest), parentSk]);
@@ -85,9 +86,11 @@ class HdKeys {
       throw Exception("Expected index to be uint32");
     }
 
-    Uint8List buffer = pk.toBytes() + index.asUint32Bytes() as Uint8List;
+    var digest = Uint8List.fromList(sha256
+        .convert(pk.toBytes() + index.asUint32Bytes().reversed.toList())
+        .bytes);
 
-    return pk + (G1Generator() * PrivateKey.fromBytes(buffer).value);
+    return pk + (G1Generator() * PrivateKey.fromBytes(digest).value);
   }
 
   static JacobianPoint deriveChildG2Unhardened(JacobianPoint pk, int index) {
@@ -98,8 +101,10 @@ class HdKeys {
       throw Exception("Expected uint32");
     }
 
-    Uint8List buffer = pk.toBytes() + index.asUint32Bytes() as Uint8List;
+    var digest = Uint8List.fromList(sha256
+        .convert(pk.toBytes() + index.asUint32Bytes().reversed.toList())
+        .bytes);
 
-    return pk + (G2Generator() * PrivateKey.fromBytes(buffer));
+    return pk + (G2Generator() * PrivateKey.fromBytes(digest));
   }
 }

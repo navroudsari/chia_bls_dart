@@ -39,10 +39,10 @@ void main() {
 
   group('private key tests', () {
     test('Copy {constructor| assignment operator}', () {
-      PrivateKey pk1 =
-          PrivateKey.fromBytes(Random.secure().nextInt(255).asUint32Bytes());
-      PrivateKey pk2 =
-          PrivateKey.fromBytes(Random.secure().nextInt(255).asUint32Bytes());
+      PrivateKey pk1 = PrivateKey.fromBytes(Uint8List.fromList(
+          List.generate(4, (i) => Random.secure().nextInt(255))));
+      PrivateKey pk2 = PrivateKey.fromBytes(Uint8List.fromList(
+          List.generate(4, (i) => Random.secure().nextInt(255))));
       PrivateKey pk3 = pk2.clone();
       expect(pk1.isZero(), isFalse);
       expect(pk2.isZero(), isFalse);
@@ -314,7 +314,7 @@ void main() {
     var ress = {};
     for (int l = 16; l <= 8192; l++) {
       var result = expandMessageXmd(msg, dst, l, sha512);
-      test('of 8192 - check length', () => expect(l, equals(result.length)));
+      test('check length', () => expect(l, equals(result.length)));
       var key = result.sublist(0, 16);
       ress[key] = (ress[key] ?? 0) + 1;
     }
@@ -645,5 +645,137 @@ void main() {
         expect(() => G2FromBytes(bytes_).checkValid(), throwsA(isA<dynamic>()));
       });
     }
+  });
+
+  group('Test readme', () {
+    var seed = Uint8List.fromList([
+      0,
+      50,
+      6,
+      244,
+      24,
+      199,
+      1,
+      25,
+      52,
+      88,
+      192,
+      19,
+      18,
+      12,
+      89,
+      6,
+      220,
+      18,
+      102,
+      58,
+      209,
+      82,
+      12,
+      62,
+      89,
+      110,
+      182,
+      9,
+      44,
+      20,
+      254,
+      22,
+    ]);
+    var sk = AugSchemeMPL().keyGen(seed);
+    var pk = sk.getG1();
+    var message = Uint8List.fromList([1, 2, 3, 4, 5]);
+    var signature = AugSchemeMPL().sign(sk, message);
+    test('AugSchemeMPL verify is OK',
+        () => expect(AugSchemeMPL().verify(pk, message, signature), isTrue));
+
+    var skBytes = sk.toBytes(); // 32 bytes
+    var pkBytes = pk.toBytes(); // 48 bytes
+    var signatureBytes = signature.toBytes(); // 96 bytes
+    var skFromBytes = PrivateKey.fromBytes(skBytes);
+    var pkFromBytes = G1FromBytes(pkBytes);
+    var sigFromBytes = G2FromBytes(signatureBytes);
+    test('Private key from bytes', () => expect(sk, equals(skFromBytes)));
+    test('Public key from bytes', () => expect(pk, equals(pkFromBytes)));
+    test('Signature from bytes', () => expect(signature, equals(sigFromBytes)));
+
+    seed = Uint8List.fromList([1] + seed.sublist(1));
+    var sk1 = AugSchemeMPL().keyGen(seed);
+    seed = Uint8List.fromList([2] + seed.sublist(1));
+    var sk2 = AugSchemeMPL().keyGen(seed);
+    var message2 = Uint8List.fromList([1, 2, 3, 4, 5, 6, 7]);
+    var pk1 = sk1.getG1();
+    var sig1 = AugSchemeMPL().sign(sk1, message);
+    var pk2 = sk2.getG1();
+    var sig2 = AugSchemeMPL().sign(sk2, message2);
+    var aggSig = AugSchemeMPL().aggregateSignatures([sig1, sig2]);
+    test(
+        'AugSchemeMPL aggregate verify test 1',
+        () => expect(
+            AugSchemeMPL()
+                .aggregateVerify([pk1, pk2], [message, message2], aggSig),
+            isTrue));
+
+    seed = Uint8List.fromList([3] + seed.sublist(1));
+    var sk3 = AugSchemeMPL().keyGen(seed);
+    var pk3 = sk3.getG1();
+    var message3 = Uint8List.fromList([100, 2, 254, 88, 90, 45, 23]);
+    var sig3 = AugSchemeMPL().sign(sk3, message3);
+    var aggSigFinal = AugSchemeMPL().aggregateSignatures([aggSig, sig3]);
+    test(
+        'AugSchemeMPL aggregate verify test 2',
+        () => expect(
+            AugSchemeMPL().aggregateVerify(
+                [pk1, pk2, pk3], [message, message2, message3], aggSigFinal),
+            isTrue));
+
+    var popSig1 = PopSchemeMPL().sign(sk1, message);
+    var popSig2 = PopSchemeMPL().sign(sk2, message);
+    var popSig3 = PopSchemeMPL().sign(sk3, message);
+    var pop1 = PopSchemeMPL().popProve(sk1);
+    var pop2 = PopSchemeMPL().popProve(sk2);
+    var pop3 = PopSchemeMPL().popProve(sk3);
+    test('PopSchemeMPL pop verify test 1',
+        () => expect(PopSchemeMPL().popVerify(pk1, pop1), isTrue));
+    test('PopSchemeMPL pop verify test 2',
+        () => expect(PopSchemeMPL().popVerify(pk2, pop2), isTrue));
+    test('PopSchemeMPL pop verify test 3',
+        () => expect(PopSchemeMPL().popVerify(pk3, pop3), isTrue));
+
+    var popSigAgg =
+        PopSchemeMPL().aggregateSignatures([popSig1, popSig2, popSig3]);
+    test(
+        'PopSchemeMPL fast aggregate verify',
+        () => expect(
+            PopSchemeMPL()
+                .fastAggregateVerify([pk1, pk2, pk3], message, popSigAgg),
+            isTrue));
+
+    var popAggPk = pk1 + pk2 + pk3;
+    test(
+        'PopSchemeMPL verify test 1',
+        () => expect(
+            PopSchemeMPL().verify(popAggPk, message, popSigAgg), isTrue));
+
+    var popAggSk = PrivateKey.aggregate([sk1, sk2, sk3]);
+    test(
+        'PopSchemeMPL sign equaity',
+        () =>
+            expect(PopSchemeMPL().sign(popAggSk, message), equals(popSigAgg)));
+
+    var masterSk = AugSchemeMPL().keyGen(seed);
+    var child = AugSchemeMPL().deriveChildSk(masterSk, 152);
+    var grandchild = AugSchemeMPL().deriveChildSk(child, 952);
+    test('grandchild is not null', () => expect(grandchild, isNot(null)));
+
+    var masterPk = masterSk.getG1();
+    var childU = AugSchemeMPL().deriveChildSkUnhardened(masterSk, 22);
+    var grandchildU = AugSchemeMPL().deriveChildSkUnhardened(childU, 0);
+
+    var childUPk = AugSchemeMPL().deriveChildPkUnhardened(masterPk, 22);
+    var grandchildUPk = AugSchemeMPL().deriveChildPkUnhardened(childUPk, 0);
+
+    test('AugSchemeMPL granchild pubkey equality',
+        () => expect(grandchildUPk, equals(grandchildU.getG1())));
   });
 }
